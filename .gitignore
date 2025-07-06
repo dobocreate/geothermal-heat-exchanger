@@ -134,3 +134,4 @@ Thumbs.db
 # Streamlit
 .streamlit/secrets.toml
 *.pyc
+geo-heat_ex-change/

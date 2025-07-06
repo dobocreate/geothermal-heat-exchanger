@@ -11,7 +11,13 @@
       "Bash(git push:*)",
       "Bash(git remote set-url:*)",
       "Bash(git config:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(realpath:*)",
+      "Bash(claudecode:*)",
+      "Bash(claude-code --version)",
+      "Bash(streamlit run:*)"
     ],
     "deny": []
   }

@@ -38,6 +38,9 @@ if page == "🔧 計算ツール":
     ground_temp = st.sidebar.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1)
     flow_rate = st.sidebar.slider("総流量 (L/min)", 20.0, 100.0, 50.0, 1.0)
     pipe_length = st.sidebar.slider("管浸水距離 (m)", 3.0, 15.0, 5.0, 0.5)
+    
+    # ボーリング掘削径の表示（将来的に変更可能）
+    st.sidebar.info("🕳️ ボーリング掘削径: φ250mm")
 
     # 配管条件
     st.sidebar.subheader("配管条件")
@@ -49,6 +52,28 @@ if page == "🔧 計算ツール":
         "配管口径",
         ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"],
         index=3  # デフォルトは32A
+    )
+    
+    # 管径別の推奨本数（参考値）
+    pipe_counts_default = {
+        "15A": 1,   # 50 L/min × 1本
+        "20A": 1,   # 50 L/min × 1本
+        "25A": 1,   # 50 L/min × 1本
+        "32A": 4,   # 12.5 L/min × 4本
+        "40A": 2,   # 25 L/min × 2本
+        "50A": 1,   # 50 L/min × 1本
+        "65A": 1,   # 50 L/min × 1本
+        "80A": 1    # 50 L/min × 1本
+    }
+    
+    # 配管本数の設定
+    num_pipes_user = st.sidebar.slider(
+        "配管本数",
+        min_value=1,
+        max_value=5,
+        value=pipe_counts_default.get(pipe_diameter, 1),
+        step=1,
+        help="並列に設置する配管の本数"
     )
 
     # 地下水温度変化の設定
@@ -119,7 +144,7 @@ if page == "🔧 計算ツール":
         pipe_area = math.pi * (inner_diameter / 2) ** 2  # m²
         
         # 1本あたりの流量を計算
-        num_pipes = pipe_counts[pipe_diameter]
+        num_pipes = num_pipes_user  # ユーザー設定値を使用
         flow_per_pipe = flow_rate / num_pipes  # L/min/本
         
         # 流速の計算 (m/s)
@@ -300,6 +325,38 @@ if page == "🔧 計算ツール":
         # 複数配管比較ページ
         st.header("📋 管径別比較結果")
         
+        # 各管径の本数を設定
+        st.subheader("配管本数の設定")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            n_15A = st.number_input("15A本数", min_value=1, max_value=10, value=1)
+            n_20A = st.number_input("20A本数", min_value=1, max_value=10, value=1)
+        
+        with col2:
+            n_25A = st.number_input("25A本数", min_value=1, max_value=10, value=1)
+            n_32A = st.number_input("32A本数", min_value=1, max_value=10, value=4)
+        
+        with col3:
+            n_40A = st.number_input("40A本数", min_value=1, max_value=10, value=2)
+            n_50A = st.number_input("50A本数", min_value=1, max_value=10, value=1)
+        
+        with col4:
+            n_65A = st.number_input("65A本数", min_value=1, max_value=10, value=1)
+            n_80A = st.number_input("80A本数", min_value=1, max_value=10, value=1)
+        
+        # ユーザー入力の本数でpipe_countsを更新
+        pipe_counts_user = {
+            "15A": n_15A,
+            "20A": n_20A,
+            "25A": n_25A,
+            "32A": n_32A,
+            "40A": n_40A,
+            "50A": n_50A,
+            "65A": n_65A,
+            "80A": n_80A
+        }
+        
         # 共通データの再定義
         pipe_specs = {
             "15A": 16.1,
@@ -368,7 +425,7 @@ if page == "🔧 計算ツール":
             # 各管径での計算
             inner_d = pipe_specs[pipe_size] / 1000
             area = math.pi * (inner_d / 2) ** 2
-            n_pipes = pipe_counts[pipe_size]
+            n_pipes = pipe_counts_user[pipe_size]
             flow_per_p = flow_rate / n_pipes
             flow_rate_m3s_per_p = flow_per_p / 60000
             vel = flow_rate_m3s_per_p / area
