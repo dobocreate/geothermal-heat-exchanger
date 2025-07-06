@@ -76,11 +76,23 @@ if page == "🔧 計算ツール":
             "15A": 16.1,
             "20A": 22.2,
             "25A": 28.0,
-            "32A": 36.0,
+            "32A": 33.5,  # summary.mdに合わせて修正
             "40A": 41.2,
             "50A": 52.6,
             "65A": 67.8,
             "80A": 80.1
+        }
+        
+        # 管径別の推奨本数（50L/minの総流量を分配）
+        pipe_counts = {
+            "15A": 1,   # 50 L/min × 1本
+            "20A": 1,   # 50 L/min × 1本
+            "25A": 1,   # 50 L/min × 1本
+            "32A": 4,   # 12.5 L/min × 4本
+            "40A": 2,   # 25 L/min × 2本
+            "50A": 1,   # 50 L/min × 1本
+            "65A": 1,   # 50 L/min × 1本
+            "80A": 1    # 50 L/min × 1本
         }
         
         # 材質による熱伝導率 (W/m・K)
@@ -102,9 +114,13 @@ if page == "🔧 計算ツール":
         inner_diameter = pipe_specs[pipe_diameter] / 1000  # m
         pipe_area = math.pi * (inner_diameter / 2) ** 2  # m²
         
+        # 1本あたりの流量を計算
+        num_pipes = pipe_counts[pipe_diameter]
+        flow_per_pipe = flow_rate / num_pipes  # L/min/本
+        
         # 流速の計算 (m/s)
-        flow_rate_m3s = flow_rate / 60000  # L/min → m³/s
-        velocity = flow_rate_m3s / pipe_area
+        flow_rate_m3s_per_pipe = flow_per_pipe / 60000  # L/min → m³/s
+        velocity = flow_rate_m3s_per_pipe / pipe_area
         
         # 温度依存の物性値計算（平均温度基準）
         # 動粘度の計算 [m²/s]
@@ -165,11 +181,14 @@ if page == "🔧 計算ツール":
         total_length = pipe_length * 2  # 往復分
         heat_exchange_area = math.pi * inner_diameter * total_length
         
-        # 質量流量
-        mass_flow_rate = flow_rate_m3s * density  # kg/s
+        # 質量流量（1本あたり）
+        mass_flow_rate_per_pipe = flow_rate_m3s_per_pipe * density  # kg/s
         
-        # NTU（伝熱単位数）の計算
-        NTU = U * heat_exchange_area / (mass_flow_rate * specific_heat)
+        # NTU（伝熱単位数）の計算（1本あたり）
+        NTU_per_pipe = U * heat_exchange_area / (mass_flow_rate_per_pipe * specific_heat)
+        
+        # 全体のNTU（並列配管の場合、1本あたりのNTUと同じ）
+        NTU = NTU_per_pipe
         
         # 効率の計算（対向流型熱交換器として近似）
         effectiveness = 1 - math.exp(-NTU)
@@ -194,6 +213,9 @@ if page == "🔧 計算ツール":
         
         with metric_col3:
             st.metric("温度降下", f"{initial_temp - final_temp:.1f}℃")
+        
+        # 配管本数の表示
+        st.metric("配管本数", f"{num_pipes} 本", f"1本あたり {flow_per_pipe:.1f} L/min")
         
         # 追加の計算結果表示
         st.subheader("詳細パラメータ")
@@ -254,7 +276,10 @@ if page == "🔧 計算ツール":
         # 各管径での計算
         inner_d = pipe_specs[pipe_size] / 1000
         area = math.pi * (inner_d / 2) ** 2
-        vel = flow_rate_m3s / area
+        n_pipes = pipe_counts[pipe_size]
+        flow_per_p = flow_rate / n_pipes
+        flow_rate_m3s_per_p = flow_per_p / 60000
+        vel = flow_rate_m3s_per_p / area
         re = vel * inner_d / kinematic_viscosity
         
         if re < 2300:
@@ -280,18 +305,21 @@ if page == "🔧 計算ツール":
                      inner_d/(outer_d*h_outer))
         
         A_temp = math.pi * inner_d * total_length
-        NTU_temp = U_temp * A_temp / (mass_flow_rate * specific_heat)
+        mass_flow_per_p = flow_rate_m3s_per_p * density
+        NTU_temp = U_temp * A_temp / (mass_flow_per_p * specific_heat)
         eff_temp = 1 - math.exp(-NTU_temp)
         final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp)
         
         pipe_comparison.append({
             "管径": pipe_size,
+            "本数": n_pipes,
             "最終温度(℃)": round(final_t, 1),
             "効率(%)": round(eff_temp * 100, 1),
             "流速(m/s)": round(vel, 3),
             "レイノルズ数": int(re),
             "h_i(W/m²K)": int(h),
-            "U(W/m²K)": round(U_temp, 1)
+            "U(W/m²K)": round(U_temp, 1),
+            "NTU": round(NTU_temp, 3)
         })
 
     df = pd.DataFrame(pipe_comparison)
@@ -346,6 +374,7 @@ if page == "🔧 計算ツール":
         st.markdown(f"- 配管材質: {pipe_material}")
         st.markdown(f"- 内径: {inner_diameter*1000:.1f} mm")
         st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
+        st.markdown(f"- 配管本数: {num_pipes} 本")
 
     # フッター
     st.markdown("---")
@@ -448,7 +477,7 @@ elif page == "📚 理論解説":
         | 15A | 16.1 | 2.8 |
         | 20A | 22.2 | 2.8 |
         | 25A | 28.0 | 2.8 |
-        | 32A | 36.0 | 3.2 |
+        | 32A | 33.5 | 3.2 |
         | 40A | 41.2 | 3.2 |
         | 50A | 52.6 | 3.6 |
         | 65A | 67.8 | 3.6 |
