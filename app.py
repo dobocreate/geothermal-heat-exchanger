@@ -90,8 +90,11 @@ if page == "🔧 計算ツール":
     # 運転時間の設定
     if consider_groundwater_temp_rise:
         operation_hours = st.sidebar.slider("運転時間 (時間)", 1, 24, 1, 1)
+        temp_rise_limit = st.sidebar.slider("温度上昇上限値 (℃)", 5, 20, 5, 1, 
+                                           help="地下水温度上昇の最大制限値")
     else:
         operation_hours = 1  # デフォルト値
+        temp_rise_limit = 5  # デフォルト値
 
     # メイン画面にタブを設置
     tab1, tab2 = st.tabs(["🔧 単一配管計算", "📊 複数配管比較"])
@@ -258,9 +261,9 @@ if page == "🔧 計算ツール":
                 st.error("⚠️ 地下水体積が負またはゼロです。配管が多すぎるか、掘削径が小さすぎます。")
                 groundwater_temp_rise = 0.0
             
-            # 温度上昇を制限（最大5℃）
+            # 温度上昇を制限
             groundwater_temp_rise_unlimited = groundwater_temp_rise
-            groundwater_temp_rise = min(groundwater_temp_rise, 5.0)
+            groundwater_temp_rise = min(groundwater_temp_rise, temp_rise_limit)
             
             # 実効地下水温度を更新
             effective_ground_temp = ground_temp + groundwater_temp_rise
@@ -304,7 +307,7 @@ if page == "🔧 計算ツール":
         
         with row2_col1:
             if consider_groundwater_temp_rise:
-                st.metric("実効地下水温", f"{effective_ground_temp:.1f}℃", f"+{groundwater_temp_rise:.1f}℃")
+                st.metric("最終地下水温", f"{effective_ground_temp:.1f}℃", f"+{groundwater_temp_rise:.1f}℃")
             else:
                 st.metric("地下水温", f"{effective_ground_temp:.1f}℃")
         
@@ -352,8 +355,9 @@ if page == "🔧 計算ツール":
             st.markdown(f"- 地下水温度: {ground_temp}℃")
             if consider_groundwater_temp_rise:
                 st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise:.2f}℃（自動計算）")
-                st.markdown(f"- 実効地下水温度: {effective_ground_temp:.1f}℃")
+                st.markdown(f"- 最終地下水温度: {effective_ground_temp:.1f}℃")
                 st.markdown(f"- 運転時間: {operation_hours}時間")
+                st.markdown(f"- 温度上昇上限: {temp_rise_limit}℃")
             st.markdown(f"- 掘削径: {boring_diameter}")
 
         with condition_col2:
@@ -381,7 +385,7 @@ if page == "🔧 計算ツール":
             with gw_col3:
                 st.metric("地下水質量", f"{groundwater_mass:.0f} kg")
             with gw_col4:
-                if groundwater_temp_rise_unlimited > 5.0:
+                if groundwater_temp_rise_unlimited > temp_rise_limit:
                     st.metric(f"{operation_hours}時間運転での温度上昇", f"{groundwater_temp_rise:.2f}℃", f"制限前: {groundwater_temp_rise_unlimited:.2f}℃")
                 else:
                     st.metric(f"{operation_hours}時間運転での温度上昇", f"{groundwater_temp_rise:.2f}℃")
@@ -585,7 +589,7 @@ if page == "🔧 計算ツール":
                 operation_time = operation_hours * 3600  # 秒
                 if groundwater_mass_temp > 0:
                     gw_temp_rise = (heat_rate_temp * operation_time) / (groundwater_mass_temp * specific_heat)
-                    gw_temp_rise = min(gw_temp_rise, 5.0)
+                    gw_temp_rise = min(gw_temp_rise, temp_rise_limit)
                 else:
                     gw_temp_rise = 0.0
                 
@@ -762,7 +766,7 @@ elif page == "📚 理論解説":
     - ΔT_gw: 地下水温度上昇 [℃]
     - t: 運転時間 [s]
     - m_gw: 地下水質量 [kg] = V_gw × ρ
-    - 最大値は5℃に制限
+    - 最大値は設定した上限値（5-20℃）に制限
     """)
     
     st.info("""
