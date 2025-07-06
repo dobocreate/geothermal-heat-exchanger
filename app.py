@@ -87,14 +87,27 @@ if page == "🔧 計算ツール":
         help="熱交換による地下水温度の上昇を自動計算します"
     )
     
-    # 運転時間の設定
+    # 地下水循環の設定
     if consider_groundwater_temp_rise:
-        operation_hours = st.sidebar.slider("運転時間 (時間)", 1, 24, 1, 1)
+        consider_circulation = st.sidebar.checkbox(
+            "地下水の循環を考慮する",
+            value=False,
+            help="地下水が循環せず、指定時間運転した場合の温度上昇を計算"
+        )
+        
+        if consider_circulation:
+            operation_minutes = st.sidebar.slider("運転時間 (分)", 1, 60, 10, 1)
+            operation_hours = operation_minutes / 60  # 時間に変換
+        else:
+            # 1回の通水時間を計算（デフォルト）
+            operation_hours = 1  # 暫定値、後で計算される
+            
         temp_rise_limit = st.sidebar.slider("温度上昇上限値 (℃)", 5, 20, 5, 1, 
                                            help="地下水温度上昇の最大制限値")
     else:
-        operation_hours = 1  # デフォルト値
+        operation_hours = 1  # デフォルト値（後で再計算される）
         temp_rise_limit = 5  # デフォルト値
+        consider_circulation = False
 
     # メイン画面にタブを設置
     tab1, tab2 = st.tabs(["🔧 単一配管計算", "📊 複数配管比較"])
@@ -253,6 +266,13 @@ if page == "🔧 計算ツール":
             groundwater_volume = boring_volume - pipe_total_volume  # m³
             groundwater_mass = groundwater_volume * density  # kg
             
+            # 1回の通水時間を計算（循環を考慮しない場合）
+            if not consider_circulation:
+                # U字管の全長を流速で除して通水時間を求める
+                total_pipe_length = pipe_length * 2  # U字管往復
+                transit_time_seconds = total_pipe_length / velocity  # 秒
+                operation_hours = transit_time_seconds / 3600  # 時間に変換
+            
             # 地下水の温度上昇を計算
             operation_time = operation_hours * 3600  # 秒
             if groundwater_mass > 0:
@@ -356,7 +376,10 @@ if page == "🔧 計算ツール":
             if consider_groundwater_temp_rise:
                 st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise:.2f}℃（自動計算）")
                 st.markdown(f"- 最終地下水温度: {effective_ground_temp:.1f}℃")
-                st.markdown(f"- 運転時間: {operation_hours}時間")
+                if consider_circulation:
+                    st.markdown(f"- 運転時間: {operation_minutes}分")
+                else:
+                    st.markdown(f"- 通水時間: {operation_hours*3600:.1f}秒（{operation_hours*60:.1f}分）")
                 st.markdown(f"- 温度上昇上限: {temp_rise_limit}℃")
             st.markdown(f"- 掘削径: {boring_diameter}")
 
@@ -385,10 +408,15 @@ if page == "🔧 計算ツール":
             with gw_col3:
                 st.metric("地下水質量", f"{groundwater_mass:.0f} kg")
             with gw_col4:
-                if groundwater_temp_rise_unlimited > temp_rise_limit:
-                    st.metric(f"{operation_hours}時間運転での温度上昇", f"{groundwater_temp_rise:.2f}℃", f"制限前: {groundwater_temp_rise_unlimited:.2f}℃")
+                if consider_circulation:
+                    time_label = f"{operation_minutes}分運転"
                 else:
-                    st.metric(f"{operation_hours}時間運転での温度上昇", f"{groundwater_temp_rise:.2f}℃")
+                    time_label = f"1回通水（{operation_hours*60:.1f}分）"
+                    
+                if groundwater_temp_rise_unlimited > temp_rise_limit:
+                    st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃", f"制限前: {groundwater_temp_rise_unlimited:.2f}℃")
+                else:
+                    st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃")
         
         # 追加の計算結果表示
         st.subheader("詳細パラメータ")
@@ -586,7 +614,15 @@ if page == "🔧 計算ツール":
                 groundwater_mass_temp = groundwater_volume_temp * density  # kg
                 
                 # 運転時間での温度上昇
-                operation_time = operation_hours * 3600  # 秒
+                # 循環を考慮しない場合は1回の通水時間を計算
+                if not consider_circulation:
+                    total_pipe_length_temp = pipe_length * 2  # U字管往復
+                    transit_time_seconds_temp = total_pipe_length_temp / vel  # 秒
+                    operation_hours_temp = transit_time_seconds_temp / 3600  # 時間に変換
+                else:
+                    operation_hours_temp = operation_hours
+                    
+                operation_time = operation_hours_temp * 3600  # 秒
                 if groundwater_mass_temp > 0:
                     gw_temp_rise = (heat_rate_temp * operation_time) / (groundwater_mass_temp * specific_heat)
                     gw_temp_rise = min(gw_temp_rise, temp_rise_limit)
