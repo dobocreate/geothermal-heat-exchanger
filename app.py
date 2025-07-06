@@ -64,8 +64,8 @@ if page == "🔧 計算ツール":
         "15A": 1,   # 50 L/min × 1本
         "20A": 1,   # 50 L/min × 1本
         "25A": 1,   # 50 L/min × 1本
-        "32A": 4,   # 12.5 L/min × 4本
-        "40A": 2,   # 25 L/min × 2本
+        "32A": 1,   # 12.5 L/min × 1本
+        "40A": 1,   # 25 L/min × 1本
         "50A": 1,   # 50 L/min × 1本
         "65A": 1,   # 50 L/min × 1本
         "80A": 1    # 50 L/min × 1本
@@ -84,14 +84,8 @@ if page == "🔧 計算ツール":
     consider_groundwater_temp_rise = st.sidebar.checkbox(
         "地下水温度上昇を考慮する",
         value=False,
-        help="長期運転による地下水温度の上昇を考慮する場合はチェック"
+        help="熱交換による地下水温度の上昇を自動計算します"
     )
-    if consider_groundwater_temp_rise:
-        groundwater_temp_rise = st.sidebar.slider(
-            "地下水温度上昇値 (℃)", 
-            0.0, 5.0, 2.0, 0.1,
-            help="長期運転による地下水温度の上昇分"
-        )
 
     # メイン画面にタブを設置
     tab1, tab2 = st.tabs(["🔧 単一配管計算", "📊 複数配管比較"])
@@ -130,10 +124,8 @@ if page == "🔧 計算ツール":
             "銅管": 398.0
         }
         
-        # 実効地下水温度の計算
+        # 初期計算用の地下水温度
         effective_ground_temp = ground_temp
-        if consider_groundwater_temp_rise:
-            effective_ground_temp += groundwater_temp_rise
         
         # 平均温度の計算（物性値計算用）
         avg_temp = (initial_temp + effective_ground_temp) / 2
@@ -231,8 +223,35 @@ if page == "🔧 計算ツール":
         # 効率の計算（対向流型熱交換器として近似）
         effectiveness = 1 - math.exp(-NTU)
         
-        # 最終温度の計算
+        # 最終温度の計算（初回）
         final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
+        
+        # 地下水温度上昇の計算
+        if consider_groundwater_temp_rise:
+            # 熱交換量の計算 [W]
+            heat_exchange_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (initial_temp - final_temp)
+            
+            # 地下水の体積流量を仮定（ボーリング孔周辺の有効体積）
+            # 影響半径を掘削径の10倍と仮定
+            influence_radius = boring_diameter_mm / 1000 * 10  # m
+            groundwater_volume = math.pi * influence_radius**2 * pipe_length  # m³
+            groundwater_mass = groundwater_volume * density  # kg
+            
+            # 地下水の温度上昇を計算（定常状態を仮定）
+            # 1時間の運転での温度上昇
+            operation_time = 3600  # 秒（1時間）
+            groundwater_temp_rise = (heat_exchange_rate * operation_time) / (groundwater_mass * specific_heat)
+            
+            # 温度上昇を制限（最大5℃）
+            groundwater_temp_rise = min(groundwater_temp_rise, 5.0)
+            
+            # 実効地下水温度を更新
+            effective_ground_temp = ground_temp + groundwater_temp_rise
+            
+            # 最終温度を再計算
+            final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
+        else:
+            groundwater_temp_rise = 0.0
         
         # 熱交換効率（％）
         if initial_temp != effective_ground_temp:
@@ -290,8 +309,8 @@ if page == "🔧 計算ツール":
             st.markdown(f"- 初期温度: {initial_temp}℃")
             st.markdown(f"- 地下水温度: {ground_temp}℃")
             if consider_groundwater_temp_rise:
-                st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise}℃")
-                st.markdown(f"- 実効地下水温度: {effective_ground_temp}℃")
+                st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise:.2f}℃（自動計算）")
+                st.markdown(f"- 実効地下水温度: {effective_ground_temp:.1f}℃")
             st.markdown(f"- 掘削径: {boring_diameter}")
 
         with condition_col2:
@@ -307,6 +326,17 @@ if page == "🔧 計算ツール":
             st.markdown(f"- 外径: {outer_diameter*1000:.1f} mm")
             st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
             st.markdown(f"- 配管本数: {num_pipes} 本")
+        
+        # 地下水温度上昇の詳細（チェックされている場合）
+        if consider_groundwater_temp_rise:
+            st.subheader("🌊 地下水温度上昇の詳細")
+            gw_col1, gw_col2, gw_col3 = st.columns(3)
+            with gw_col1:
+                st.metric("熱交換量", f"{heat_exchange_rate/1000:.1f} kW")
+            with gw_col2:
+                st.metric("影響半径", f"{influence_radius:.1f} m")
+            with gw_col3:
+                st.metric("1時間運転での温度上昇", f"{groundwater_temp_rise:.2f}℃")
         
         # 追加の計算結果表示
         st.subheader("詳細パラメータ")
@@ -407,10 +437,9 @@ if page == "🔧 計算ツール":
             "銅管": 398.0
         }
         
-        # 実効地下水温度の計算
+        # 初期計算用の地下水温度
         effective_ground_temp = ground_temp
-        if consider_groundwater_temp_rise:
-            effective_ground_temp += groundwater_temp_rise
+        groundwater_temp_rise = 0.0  # 初期値
         
         # 平均温度の計算
         avg_temp = (initial_temp + effective_ground_temp) / 2
@@ -486,6 +515,27 @@ if page == "🔧 計算ツール":
             NTU_temp = U_temp * A_temp / (mass_flow_per_p * specific_heat)
             eff_temp = 1 - math.exp(-NTU_temp)
             final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp)
+            
+            # 地下水温度上昇の計算（各配管サイズごと）
+            if consider_groundwater_temp_rise:
+                # 熱交換量の計算 [W]
+                heat_rate_temp = mass_flow_per_p * n_pipes * density * specific_heat * (initial_temp - final_t)
+                
+                # 地下水の体積と質量
+                influence_radius_temp = boring_diameter_mm / 1000 * 10  # m
+                groundwater_volume_temp = math.pi * influence_radius_temp**2 * pipe_length  # m³
+                groundwater_mass_temp = groundwater_volume_temp * density  # kg
+                
+                # 1時間運転での温度上昇
+                operation_time = 3600  # 秒
+                gw_temp_rise = (heat_rate_temp * operation_time) / (groundwater_mass_temp * specific_heat)
+                gw_temp_rise = min(gw_temp_rise, 5.0)
+                
+                # 実効地下水温度で再計算
+                effective_ground_temp_local = ground_temp + gw_temp_rise
+                final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp_local)
+            else:
+                gw_temp_rise = 0.0
             
             pipe_comparison.append({
                 "管径": pipe_size,
