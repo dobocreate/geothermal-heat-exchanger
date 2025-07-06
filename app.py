@@ -39,8 +39,13 @@ if page == "🔧 計算ツール":
     flow_rate = st.sidebar.slider("総流量 (L/min)", 20.0, 100.0, 50.0, 1.0)
     pipe_length = st.sidebar.slider("管浸水距離 (m)", 3.0, 15.0, 5.0, 0.5)
     
-    # ボーリング掘削径の表示（将来的に変更可能）
-    st.sidebar.info("🕳️ ボーリング掘削径: φ250mm")
+    # 掘削径の選択
+    boring_diameter = st.sidebar.selectbox(
+        "掘削径",
+        ["φ116", "φ250"],
+        index=1  # デフォルトはφ250
+    )
+    boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
 
     # 配管条件
     st.sidebar.subheader("配管条件")
@@ -49,7 +54,7 @@ if page == "🔧 計算ツール":
         ["鋼管", "アルミ管", "銅管"]
     )
     pipe_diameter = st.sidebar.selectbox(
-        "配管口径",
+        "管径",
         ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"],
         index=3  # デフォルトは32A
     )
@@ -67,12 +72,10 @@ if page == "🔧 計算ツール":
     }
     
     # 配管本数の設定
-    num_pipes_user = st.sidebar.slider(
+    num_pipes_user = st.sidebar.selectbox(
         "配管本数",
-        min_value=1,
-        max_value=5,
-        value=pipe_counts_default.get(pipe_diameter, 1),
-        step=1,
+        options=[1, 2, 3, 4, 5],
+        index=pipe_counts_default.get(pipe_diameter, 1) - 1,
         help="並列に設置する配管の本数"
     )
 
@@ -206,6 +209,16 @@ if page == "🔧 計算ツール":
                 inner_diameter/(2*pipe_thermal_cond) * math.log(outer_diameter/inner_diameter) + 
                 inner_diameter/(outer_diameter*h_outer))
         
+        # 配管面積と掘削径の検証
+        total_pipe_area = num_pipes * math.pi * (outer_diameter / 2) ** 2 * 1000000  # mm²
+        boring_area = math.pi * (boring_diameter_mm / 2) ** 2  # mm²
+        
+        if total_pipe_area > boring_area * 0.8:  # 80%を超えたら警告
+            st.sidebar.error(f"⚠️ 配管総面積が掘削径の80%を超えています！")
+            st.sidebar.warning(f"配管総面積: {total_pipe_area:.0f}mm²")
+            st.sidebar.warning(f"掘削断面積: {boring_area:.0f}mm²")
+            st.sidebar.warning(f"占有率: {total_pipe_area/boring_area*100:.1f}%")
+        
         # 熱交換面積（U字管として往復を考慮）
         total_length = pipe_length * 2  # 往復分
         heat_exchange_area = math.pi * inner_diameter * total_length
@@ -245,6 +258,33 @@ if page == "🔧 計算ツール":
         
         # 配管本数の表示
         st.metric("配管本数", f"{num_pipes} 本", f"1本あたり {flow_per_pipe:.1f} L/min")
+        
+        # 計算条件の表示
+        st.subheader("📝 計算条件")
+        condition_col1, condition_col2, condition_col3 = st.columns(3)
+
+        with condition_col1:
+            st.markdown("**基本条件**")
+            st.markdown(f"- 初期温度: {initial_temp}℃")
+            st.markdown(f"- 地下水温度: {ground_temp}℃")
+            if consider_groundwater_temp_rise:
+                st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise}℃")
+                st.markdown(f"- 実効地下水温度: {effective_ground_temp}℃")
+            st.markdown(f"- 掘削径: {boring_diameter}")
+
+        with condition_col2:
+            st.markdown("**流量条件**")
+            st.markdown(f"- 総流量: {flow_rate} L/min")
+            st.markdown(f"- 管浸水距離: {pipe_length} m")
+            st.markdown(f"- 管径: {pipe_diameter}")
+
+        with condition_col3:
+            st.markdown("**配管仕様**")
+            st.markdown(f"- 配管材質: {pipe_material}")
+            st.markdown(f"- 内径: {inner_diameter*1000:.1f} mm")
+            st.markdown(f"- 外径: {outer_diameter*1000:.1f} mm")
+            st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
+            st.markdown(f"- 配管本数: {num_pipes} 本")
         
         # 追加の計算結果表示
         st.subheader("詳細パラメータ")
@@ -295,31 +335,6 @@ if page == "🔧 計算ツール":
                 st.markdown("- 複数の32A配管を並列配置")
         else:
             st.success("✅ 目標温度範囲内です")
-        
-        # 計算条件の表示
-        st.header("📝 計算条件")
-        condition_col1, condition_col2, condition_col3 = st.columns(3)
-
-        with condition_col1:
-            st.markdown("**基本条件**")
-            st.markdown(f"- 初期温度: {initial_temp}℃")
-            st.markdown(f"- 地下水温度: {ground_temp}℃")
-            if consider_groundwater_temp_rise:
-                st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise}℃")
-                st.markdown(f"- 実効地下水温度: {effective_ground_temp}℃")
-
-        with condition_col2:
-            st.markdown("**流量条件**")
-            st.markdown(f"- 総流量: {flow_rate} L/min")
-            st.markdown(f"- 管浸水距離: {pipe_length} m")
-            st.markdown(f"- 配管口径: {pipe_diameter}")
-
-        with condition_col3:
-            st.markdown("**配管仕様**")
-            st.markdown(f"- 配管材質: {pipe_material}")
-            st.markdown(f"- 内径: {inner_diameter*1000:.1f} mm")
-            st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
-            st.markdown(f"- 配管本数: {num_pipes} 本")
     
     with tab2:
         # 複数配管比較ページ
@@ -327,23 +342,24 @@ if page == "🔧 計算ツール":
         
         # 各管径の本数を設定
         st.subheader("配管本数の設定")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
         
         with col1:
-            n_15A = st.number_input("15A本数", min_value=1, max_value=10, value=1)
-            n_20A = st.number_input("20A本数", min_value=1, max_value=10, value=1)
-        
+            n_15A = st.number_input("15A", min_value=1, max_value=10, value=1, key="n_15A")
         with col2:
-            n_25A = st.number_input("25A本数", min_value=1, max_value=10, value=1)
-            n_32A = st.number_input("32A本数", min_value=1, max_value=10, value=4)
-        
+            n_20A = st.number_input("20A", min_value=1, max_value=10, value=1, key="n_20A")
         with col3:
-            n_40A = st.number_input("40A本数", min_value=1, max_value=10, value=2)
-            n_50A = st.number_input("50A本数", min_value=1, max_value=10, value=1)
-        
+            n_25A = st.number_input("25A", min_value=1, max_value=10, value=1, key="n_25A")
         with col4:
-            n_65A = st.number_input("65A本数", min_value=1, max_value=10, value=1)
-            n_80A = st.number_input("80A本数", min_value=1, max_value=10, value=1)
+            n_32A = st.number_input("32A", min_value=1, max_value=10, value=4, key="n_32A")
+        with col5:
+            n_40A = st.number_input("40A", min_value=1, max_value=10, value=2, key="n_40A")
+        with col6:
+            n_50A = st.number_input("50A", min_value=1, max_value=10, value=1, key="n_50A")
+        with col7:
+            n_65A = st.number_input("65A", min_value=1, max_value=10, value=1, key="n_65A")
+        with col8:
+            n_80A = st.number_input("80A", min_value=1, max_value=10, value=1, key="n_80A")
         
         # ユーザー入力の本数でpipe_countsを更新
         pipe_counts_user = {
@@ -421,6 +437,8 @@ if page == "🔧 計算ツール":
         
         # 管径別比較データの計算
         pipe_comparison = []
+        warnings_list = []  # 警告メッセージ用リスト
+        
         for pipe_size in ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"]:
             # 各管径での計算
             inner_d = pipe_specs[pipe_size] / 1000
@@ -448,6 +466,11 @@ if page == "🔧 計算ツール":
             
             outer_d = inner_d + 2 * thickness
             
+            # 配管面積と掘削径の検証
+            total_pipe_area_temp = n_pipes * math.pi * (outer_d / 2) ** 2 * 1000000  # mm²
+            if total_pipe_area_temp > boring_area * 0.8:
+                warnings_list.append(f"{pipe_size}: 配管総面積が掘削径の80%を超過 ({total_pipe_area_temp/boring_area*100:.1f}%)")
+            
             # 総括熱伝達係数（内径基準）
             U_temp = 1 / (1/h + 
                          inner_d/(2*pipe_thermal_cond) * math.log(outer_d/inner_d) + 
@@ -473,6 +496,12 @@ if page == "🔧 計算ツール":
 
         df = pd.DataFrame(pipe_comparison)
         st.dataframe(df, use_container_width=True)
+        
+        # 警告表示
+        if warnings_list:
+            st.error("⚠️ 配管面積に関する警告")
+            for warning in warnings_list:
+                st.warning(warning)
 
         # グラフ表示
         st.header("📊 視覚化")
