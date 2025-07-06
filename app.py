@@ -98,10 +98,6 @@ if page == "🔧 計算ツール":
     
     with tab1:
         # 単一配管計算ページ
-        col1, col2 = st.columns([2, 1])
-        
-        with col1:
-            st.header("📈 計算結果")
         
         # 配管仕様データ（JIS規格に基づく内径mm）
         pipe_specs = {
@@ -245,6 +241,7 @@ if page == "🔧 計算ツール":
             efficiency = 0
         
         # 結果表示
+        st.subheader("📈 計算結果")
         metric_col1, metric_col2, metric_col3 = st.columns(3)
         
         with metric_col1:
@@ -256,8 +253,33 @@ if page == "🔧 計算ツール":
         with metric_col3:
             st.metric("温度降下", f"{initial_temp - final_temp:.1f}℃")
         
-        # 配管本数の表示
-        st.metric("配管本数", f"{num_pipes} 本", f"1本あたり {flow_per_pipe:.1f} L/min")
+        # 配管本数と地下水温の表示
+        metric_col4, metric_col5 = st.columns(2)
+        with metric_col4:
+            st.metric("配管本数", f"{num_pipes} 本", f"1本あたり {flow_per_pipe:.1f} L/min")
+        with metric_col5:
+            if consider_groundwater_temp_rise:
+                st.metric("実効地下水温", f"{effective_ground_temp:.1f}℃", f"+{groundwater_temp_rise:.1f}℃")
+            else:
+                st.metric("地下水温", f"{effective_ground_temp:.1f}℃")
+        
+        # 最適化提案
+        st.subheader("⚙️ 最適化提案")
+        
+        if final_temp > 23.0:
+            st.warning("⚠️ 目標温度（22-23℃）を超えています")
+            st.markdown("**改善提案：**")
+            if pipe_length < 20:
+                st.markdown(f"- 管浸水距離を約{20}mに延長（現在: {pipe_length}m）")
+            else:
+                st.markdown("- より大口径の配管を検討")
+            st.markdown("- 地下水循環システムの導入")
+            if pipe_diameter != "32A":
+                st.markdown("- 32A配管の使用（最適効率）")
+            else:
+                st.markdown("- 複数の32A配管を並列配置")
+        else:
+            st.success("✅ 目標温度範囲内です")
         
         # 計算条件の表示
         st.subheader("📝 計算条件")
@@ -318,23 +340,6 @@ if page == "🔧 計算ツール":
         with prop_col4:
             st.metric("総括熱伝達係数", f"{U:.1f} W/m²·K")
 
-    with col2:
-        st.header("⚙️ 最適化提案")
-        
-        if final_temp > 23.0:
-            st.warning("⚠️ 目標温度（22-23℃）を超えています")
-            st.markdown("**改善提案：**")
-            if pipe_length < 20:
-                st.markdown(f"- 管浸水距離を約{20}mに延長（現在: {pipe_length}m）")
-            else:
-                st.markdown("- より大口径の配管を検討")
-            st.markdown("- 地下水循環システムの導入")
-            if pipe_diameter != "32A":
-                st.markdown("- 32A配管の使用（最適効率）")
-            else:
-                st.markdown("- 複数の32A配管を並列配置")
-        else:
-            st.success("✅ 目標温度範囲内です")
     
     with tab2:
         # 複数配管比較ページ
