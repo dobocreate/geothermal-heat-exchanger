@@ -114,4 +114,4 @@ st.plotly_chart(fig, use_container_width=True)
 
 # フッター
 st.markdown("---")
-st.markdown("**開発者**: 地中熱交換システム計算ツール | **バージョン**: 1.0.0")
+st.markdown("**開発者**: dobocreate | **バージョン**: 1.0.1 | **更新**: 2024-07-06")
