@@ -270,115 +270,197 @@ if page == "🔧 計算ツール":
                 st.markdown("- 複数の32A配管を並列配置")
         else:
             st.success("✅ 目標温度範囲内です")
-
-    # 詳細計算結果
-    st.header("📋 詳細計算結果")
-
-    # 管径別比較データの計算
-    pipe_comparison = []
-    for pipe_size in ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"]:
-        # 各管径での計算
-        inner_d = pipe_specs[pipe_size] / 1000
-        area = math.pi * (inner_d / 2) ** 2
-        n_pipes = pipe_counts[pipe_size]
-        flow_per_p = flow_rate / n_pipes
-        flow_rate_m3s_per_p = flow_per_p / 60000
-        vel = flow_rate_m3s_per_p / area
-        re = vel * inner_d / kinematic_viscosity
         
-        if re < 2300:
-            nu = 3.66
-        else:
-            nu = 0.023 * (re ** 0.8) * (prandtl ** 0.3)
+        # 計算条件の表示
+        st.header("📝 計算条件")
+        condition_col1, condition_col2, condition_col3 = st.columns(3)
+
+        with condition_col1:
+            st.markdown("**基本条件**")
+            st.markdown(f"- 初期温度: {initial_temp}℃")
+            st.markdown(f"- 地下水温度: {ground_temp}℃")
+            if consider_groundwater_temp_rise:
+                st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise}℃")
+                st.markdown(f"- 実効地下水温度: {effective_ground_temp}℃")
+
+        with condition_col2:
+            st.markdown("**流量条件**")
+            st.markdown(f"- 総流量: {flow_rate} L/min")
+            st.markdown(f"- 管浸水距離: {pipe_length} m")
+            st.markdown(f"- 配管口径: {pipe_diameter}")
+
+        with condition_col3:
+            st.markdown("**配管仕様**")
+            st.markdown(f"- 配管材質: {pipe_material}")
+            st.markdown(f"- 内径: {inner_diameter*1000:.1f} mm")
+            st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
+            st.markdown(f"- 配管本数: {num_pipes} 本")
+    
+    with tab2:
+        # 複数配管比較ページ
+        st.header("📋 管径別比較結果")
         
-        h = nu * water_thermal_conductivity / inner_d
+        # 共通データの再定義
+        pipe_specs = {
+            "15A": 16.1,
+            "20A": 22.2,
+            "25A": 28.0,
+            "32A": 33.5,
+            "40A": 41.2,
+            "50A": 52.6,
+            "65A": 67.8,
+            "80A": 80.1
+        }
         
-        # 外径の計算
-        if pipe_size in ["15A", "20A", "25A"]:
-            thickness = 0.0028
-        elif pipe_size in ["32A", "40A"]:
-            thickness = 0.0032
-        else:
-            thickness = 0.0036
+        pipe_counts = {
+            "15A": 1,
+            "20A": 1,
+            "25A": 1,
+            "32A": 4,
+            "40A": 2,
+            "50A": 1,
+            "65A": 1,
+            "80A": 1
+        }
         
-        outer_d = inner_d + 2 * thickness
+        thermal_conductivity = {
+            "鋼管": 50.0,
+            "アルミ管": 237.0,
+            "銅管": 398.0
+        }
         
-        # 総括熱伝達係数（内径基準）
-        U_temp = 1 / (1/h + 
-                     inner_d/(2*pipe_thermal_cond) * math.log(outer_d/inner_d) + 
-                     inner_d/(outer_d*h_outer))
-        
-        A_temp = math.pi * inner_d * total_length
-        mass_flow_per_p = flow_rate_m3s_per_p * density
-        NTU_temp = U_temp * A_temp / (mass_flow_per_p * specific_heat)
-        eff_temp = 1 - math.exp(-NTU_temp)
-        final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp)
-        
-        pipe_comparison.append({
-            "管径": pipe_size,
-            "本数": n_pipes,
-            "最終温度(℃)": round(final_t, 1),
-            "効率(%)": round(eff_temp * 100, 1),
-            "流速(m/s)": round(vel, 3),
-            "レイノルズ数": int(re),
-            "h_i(W/m²K)": int(h),
-            "U(W/m²K)": round(U_temp, 1),
-            "NTU": round(NTU_temp, 3)
-        })
-
-    df = pd.DataFrame(pipe_comparison)
-    st.dataframe(df, use_container_width=True)
-
-    # グラフ表示
-    st.header("📊 視覚化")
-
-    # 管径別効率比較
-    fig = make_subplots(
-        rows=1, cols=2,
-        subplot_titles=("管径別効率", "管径別最終温度"),
-        specs=[[{"secondary_y": False}, {"secondary_y": False}]]
-    )
-
-    # 効率グラフ
-    fig.add_trace(
-        go.Bar(x=df["管径"], y=df["効率(%)"], name="効率", marker_color="blue"),
-        row=1, col=1
-    )
-
-    # 温度グラフ
-    fig.add_trace(
-        go.Scatter(x=df["管径"], y=df["最終温度(℃)"], mode="lines+markers", 
-                   name="最終温度", line=dict(color="red")),
-        row=1, col=2
-    )
-
-    fig.update_layout(height=400, showlegend=True)
-    st.plotly_chart(fig, use_container_width=True)
-
-    # 計算条件の表示
-    st.header("📝 計算条件")
-    condition_col1, condition_col2, condition_col3 = st.columns(3)
-
-    with condition_col1:
-        st.markdown("**基本条件**")
-        st.markdown(f"- 初期温度: {initial_temp}℃")
-        st.markdown(f"- 地下水温度: {ground_temp}℃")
+        # 実効地下水温度の計算
+        effective_ground_temp = ground_temp
         if consider_groundwater_temp_rise:
-            st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise}℃")
-            st.markdown(f"- 実効地下水温度: {effective_ground_temp}℃")
+            effective_ground_temp += groundwater_temp_rise
+        
+        # 平均温度の計算
+        avg_temp = (initial_temp + effective_ground_temp) / 2
+        
+        # 温度依存の物性値計算
+        if avg_temp <= 20:
+            kinematic_viscosity = 1.004e-6
+            water_thermal_conductivity = 0.598
+            prandtl = 7.01
+            density = 998.2
+            specific_heat = 4182
+        elif avg_temp <= 25:
+            t_ratio = (avg_temp - 20) / 5
+            kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
+            water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
+            prandtl = 7.01 - (7.01 - 6.13) * t_ratio
+            density = 998.2 - (998.2 - 997.0) * t_ratio
+            specific_heat = 4182 - (4182 - 4179) * t_ratio
+        else:
+            kinematic_viscosity = 0.801e-6
+            water_thermal_conductivity = 0.615
+            prandtl = 5.42
+            density = 995.6
+            specific_heat = 4178
+        
+        pipe_thermal_cond = thermal_conductivity[pipe_material]
+        h_outer = 300
+        total_length = pipe_length * 2
+        
+        # 管径別比較データの計算
+        pipe_comparison = []
+        for pipe_size in ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"]:
+            # 各管径での計算
+            inner_d = pipe_specs[pipe_size] / 1000
+            area = math.pi * (inner_d / 2) ** 2
+            n_pipes = pipe_counts[pipe_size]
+            flow_per_p = flow_rate / n_pipes
+            flow_rate_m3s_per_p = flow_per_p / 60000
+            vel = flow_rate_m3s_per_p / area
+            re = vel * inner_d / kinematic_viscosity
+            
+            if re < 2300:
+                nu = 3.66
+            else:
+                nu = 0.023 * (re ** 0.8) * (prandtl ** 0.3)
+            
+            h = nu * water_thermal_conductivity / inner_d
+            
+            # 外径の計算
+            if pipe_size in ["15A", "20A", "25A"]:
+                thickness = 0.0028
+            elif pipe_size in ["32A", "40A"]:
+                thickness = 0.0032
+            else:
+                thickness = 0.0036
+            
+            outer_d = inner_d + 2 * thickness
+            
+            # 総括熱伝達係数（内径基準）
+            U_temp = 1 / (1/h + 
+                         inner_d/(2*pipe_thermal_cond) * math.log(outer_d/inner_d) + 
+                         inner_d/(outer_d*h_outer))
+            
+            A_temp = math.pi * inner_d * total_length
+            mass_flow_per_p = flow_rate_m3s_per_p * density
+            NTU_temp = U_temp * A_temp / (mass_flow_per_p * specific_heat)
+            eff_temp = 1 - math.exp(-NTU_temp)
+            final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp)
+            
+            pipe_comparison.append({
+                "管径": pipe_size,
+                "本数": n_pipes,
+                "最終温度(℃)": round(final_t, 1),
+                "効率(%)": round(eff_temp * 100, 1),
+                "流速(m/s)": round(vel, 3),
+                "レイノルズ数": int(re),
+                "h_i(W/m²K)": int(h),
+                "U(W/m²K)": round(U_temp, 1),
+                "NTU": round(NTU_temp, 3)
+            })
 
-    with condition_col2:
-        st.markdown("**流量条件**")
-        st.markdown(f"- 総流量: {flow_rate} L/min")
-        st.markdown(f"- 管浸水距離: {pipe_length} m")
-        st.markdown(f"- 配管口径: {pipe_diameter}")
+        df = pd.DataFrame(pipe_comparison)
+        st.dataframe(df, use_container_width=True)
 
-    with condition_col3:
-        st.markdown("**配管仕様**")
-        st.markdown(f"- 配管材質: {pipe_material}")
-        st.markdown(f"- 内径: {inner_diameter*1000:.1f} mm")
-        st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
-        st.markdown(f"- 配管本数: {num_pipes} 本")
+        # グラフ表示
+        st.header("📊 視覚化")
+
+        # 管径別効率比較
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=("管径別効率", "管径別最終温度"),
+            specs=[[{"secondary_y": False}, {"secondary_y": False}]]
+        )
+
+        # 効率グラフ
+        fig.add_trace(
+            go.Bar(x=df["管径"], y=df["効率(%)"], name="効率", marker_color="blue"),
+            row=1, col=1
+        )
+
+        # 温度グラフ
+        fig.add_trace(
+            go.Scatter(x=df["管径"], y=df["最終温度(℃)"], mode="lines+markers", 
+                       name="最終温度", line=dict(color="red")),
+            row=1, col=2
+        )
+
+        fig.update_layout(height=400, showlegend=True)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # 最適配管の提案
+        st.header("🎆 最適配管の分析")
+        
+        # 最も効率が高い配管を特定
+        best_pipe = df.loc[df["効率(%)"].idxmax()]
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.success(f"🥇 最適配管: {best_pipe['管径']}")
+            st.metric("最終温度", f"{best_pipe['最終温度(℃)']}℃")
+        
+        with col2:
+            st.metric("効率", f"{best_pipe['効率(%)']}%")
+            st.metric("本数", f"{best_pipe['本数']}本")
+        
+        with col3:
+            st.metric("流速", f"{best_pipe['流速(m/s)']} m/s")
+            st.metric("NTU", f"{best_pipe['NTU']}")
 
         # フッター
         st.markdown("---")
@@ -515,6 +597,6 @@ elif page == "📚 理論解説":
     - 配管の経年劣化による熱伝達性能の低下も考慮が必要です
     """)
     
-        # フッター
-        st.markdown("---")
-        st.markdown("**開発者**: dobocreate | **バージョン**: 1.2.0 | **更新**: 2025-01-06")
+    # フッター
+    st.markdown("---")
+    st.markdown("**開発者**: dobocreate | **バージョン**: 1.2.0 | **更新**: 2025-01-06")
