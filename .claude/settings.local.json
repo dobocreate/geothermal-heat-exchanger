@@ -18,7 +18,8 @@
       "Bash(claudecode:*)",
       "Bash(claude-code --version)",
       "Bash(streamlit run:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }

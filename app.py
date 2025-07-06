@@ -36,6 +36,8 @@ if page == "🔧 計算ツール":
     st.sidebar.subheader("基本条件")
     initial_temp = st.sidebar.slider("初期温度 (℃)", 20.0, 40.0, 30.0, 0.1)
     ground_temp = st.sidebar.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1)
+    target_temp = st.sidebar.slider("目標温度 (℃)", 20.0, 30.0, 23.0, 0.1, 
+                                    help="冷房運転での目標出口温度")
     flow_rate = st.sidebar.slider("総流量 (L/min)", 20.0, 100.0, 50.0, 1.0)
     pipe_length = st.sidebar.slider("管浸水距離 (m)", 3.0, 15.0, 5.0, 0.5)
     
@@ -71,12 +73,12 @@ if page == "🔧 計算ツール":
         "80A": 1    # 50 L/min × 1本
     }
     
-    # 配管本数の設定
+    # 配管セット本数の設定
     num_pipes_user = st.sidebar.selectbox(
-        "配管本数",
+        "配管セット本数",
         options=[1, 2, 3, 4, 5],
         index=pipe_counts_default.get(pipe_diameter, 1) - 1,
-        help="並列に設置する配管の本数"
+        help="U字管構造のため往路復路の2本で1セットとする"
     )
 
     # 地下水温度変化の設定
@@ -307,7 +309,7 @@ if page == "🔧 計算ツール":
         # 結果表示
         st.subheader("📈 計算結果")
         
-        # 1行目：最終温度、熱交換効率、温度降下、配管本数
+        # 1行目：最終温度、熱交換効率、温度降下、配管セット本数
         row1_col1, row1_col2, row1_col3, row1_col4 = st.columns(4)
         
         with row1_col1:
@@ -320,7 +322,7 @@ if page == "🔧 計算ツール":
             st.metric("温度降下", f"{initial_temp - final_temp:.1f}℃")
         
         with row1_col4:
-            st.metric("配管本数", f"{num_pipes} 本", f"1本あたり {flow_per_pipe:.1f} L/min")
+            st.metric("配管セット本数", f"{num_pipes} セット", f"1セットあたり {flow_per_pipe:.1f} L/min")
         
         # 2行目：地下水温、熱交換量、地下水体積、比熱
         row2_col1, row2_col2, row2_col3, row2_col4 = st.columns(4)
@@ -348,10 +350,11 @@ if page == "🔧 計算ツール":
             st.metric("比熱", f"{specific_heat:.0f} J/kg·K")
         
         # 最適化提案
+        st.markdown("---")
         st.subheader("⚙️ 最適化提案")
         
-        if final_temp > 23.0:
-            st.warning("⚠️ 目標温度（22-23℃）を超えています")
+        if final_temp > target_temp:
+            st.warning(f"⚠️ 目標温度（{target_temp}℃）を超えています")
             st.markdown("**改善提案：**")
             if pipe_length < 20:
                 st.markdown(f"- 管浸水距離を約{20}mに延長（現在: {pipe_length}m）")
@@ -366,6 +369,7 @@ if page == "🔧 計算ツール":
             st.success("✅ 目標温度範囲内です")
         
         # 計算条件の表示
+        st.markdown("---")
         st.subheader("📝 計算条件")
         condition_col1, condition_col2, condition_col3 = st.columns(3)
 
@@ -373,6 +377,7 @@ if page == "🔧 計算ツール":
             st.markdown("**基本条件**")
             st.markdown(f"- 初期温度: {initial_temp}℃")
             st.markdown(f"- 地下水温度: {ground_temp}℃")
+            st.markdown(f"- 目標温度: {target_temp}℃")
             if consider_groundwater_temp_rise:
                 st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise:.2f}℃（自動計算）")
                 st.markdown(f"- 最終地下水温度: {effective_ground_temp:.1f}℃")
@@ -395,10 +400,11 @@ if page == "🔧 計算ツール":
             st.markdown(f"- 内径: {inner_diameter*1000:.1f} mm")
             st.markdown(f"- 外径: {outer_diameter*1000:.1f} mm")
             st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
-            st.markdown(f"- 配管本数: {num_pipes} 本")
+            st.markdown(f"- 配管セット本数: {num_pipes} セット")
         
         # 地下水温度上昇の詳細（チェックされている場合）
         if consider_groundwater_temp_rise:
+            st.markdown("---")
             st.subheader("🌊 地下水温度上昇の詳細")
             gw_col1, gw_col2, gw_col3, gw_col4 = st.columns(4)
             with gw_col1:
@@ -419,6 +425,7 @@ if page == "🔧 計算ツール":
                     st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃")
         
         # 追加の計算結果表示
+        st.markdown("---")
         st.subheader("詳細パラメータ")
         detail_col1, detail_col2, detail_col3, detail_col4 = st.columns(4)
         
@@ -435,6 +442,7 @@ if page == "🔧 計算ツール":
             st.metric("NTU", f"{NTU:.3f}")
         
         # 物性値の表示
+        st.markdown("---")
         st.subheader(f"物性値（平均温度 {avg_temp:.1f}℃）")
         prop_col1, prop_col2, prop_col3, prop_col4 = st.columns(4)
         
@@ -455,8 +463,8 @@ if page == "🔧 計算ツール":
         # 複数配管比較ページ
         st.header("📋 管径別比較結果")
         
-        # 各管径の本数を設定
-        st.subheader("配管本数の設定")
+        # 各管径のセット本数を設定
+        st.subheader("配管セット本数の設定")
         col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
         
         with col1:
@@ -466,9 +474,9 @@ if page == "🔧 計算ツール":
         with col3:
             n_25A = st.number_input("25A", min_value=1, max_value=10, value=1, key="n_25A")
         with col4:
-            n_32A = st.number_input("32A", min_value=1, max_value=10, value=4, key="n_32A")
+            n_32A = st.number_input("32A", min_value=1, max_value=10, value=1, key="n_32A")
         with col5:
-            n_40A = st.number_input("40A", min_value=1, max_value=10, value=2, key="n_40A")
+            n_40A = st.number_input("40A", min_value=1, max_value=10, value=1, key="n_40A")
         with col6:
             n_50A = st.number_input("50A", min_value=1, max_value=10, value=1, key="n_50A")
         with col7:
@@ -793,7 +801,7 @@ elif page == "📚 理論解説":
     - D_boring: 掘削径 [m]
     - D_outer: 配管外径 [m]
     - L: 管浸水距離 [m]
-    - n: 配管本数
+    - n: 配管セット本数
     """)
     
     st.subheader("9.3 温度上昇")
