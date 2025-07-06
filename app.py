@@ -71,29 +71,32 @@ if page == "🔧 計算ツール":
     with col1:
         st.header("📈 計算結果")
         
-        # 配管仕様データ（内径mm）
+        # 配管仕様データ（JIS規格に基づく内径mm）
         pipe_specs = {
-        "15A": 16.1,
-        "20A": 21.6,
-        "25A": 27.6,
-        "32A": 35.7,
-        "40A": 41.6,
-        "50A": 52.9,
-        "65A": 67.9,
-        "80A": 80.7
+            "15A": 16.1,
+            "20A": 22.2,
+            "25A": 28.0,
+            "32A": 36.0,
+            "40A": 41.2,
+            "50A": 52.6,
+            "65A": 67.8,
+            "80A": 80.1
         }
         
         # 材質による熱伝導率 (W/m・K)
         thermal_conductivity = {
-        "鋼管": 50.0,
-        "アルミ管": 237.0,
-        "銅管": 398.0
+            "鋼管": 50.0,
+            "アルミ管": 237.0,
+            "銅管": 398.0
         }
         
         # 実効地下水温度の計算
         effective_ground_temp = ground_temp
         if consider_groundwater_temp_rise:
             effective_ground_temp += groundwater_temp_rise
+        
+        # 平均温度の計算（物性値計算用）
+        avg_temp = (initial_temp + effective_ground_temp) / 2
         
         # 配管内径と断面積の計算
         inner_diameter = pipe_specs[pipe_diameter] / 1000  # m
@@ -103,36 +106,66 @@ if page == "🔧 計算ツール":
         flow_rate_m3s = flow_rate / 60000  # L/min → m³/s
         velocity = flow_rate_m3s / pipe_area
         
-        # レイノルズ数の計算（水の動粘度: 約1.0e-6 m²/s at 20℃）
-        kinematic_viscosity = 1.0e-6
-        reynolds = velocity * inner_diameter / kinematic_viscosity
+        # 温度依存の物性値計算（平均温度基準）
+        # 動粘度の計算 [m²/s]
+        if avg_temp <= 20:
+            kinematic_viscosity = 1.004e-6
+            water_thermal_conductivity = 0.598
+            prandtl = 7.01
+            density = 998.2
+            specific_heat = 4182
+        elif avg_temp <= 25:
+            # 線形補間
+            t_ratio = (avg_temp - 20) / 5
+            kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
+            water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
+            prandtl = 7.01 - (7.01 - 6.13) * t_ratio
+            density = 998.2 - (998.2 - 997.0) * t_ratio
+            specific_heat = 4182 - (4182 - 4179) * t_ratio
+        else:
+            kinematic_viscosity = 0.801e-6
+            water_thermal_conductivity = 0.615
+            prandtl = 5.42
+            density = 995.6
+            specific_heat = 4178
         
-        # プラントル数（水の場合、約7.0）
-        prandtl = 7.0
+        reynolds = velocity * inner_diameter / kinematic_viscosity
         
         # ヌッセルト数の計算（層流/乱流判定）
         if reynolds < 2300:  # 層流
             nusselt = 3.66
-        else:  # 乱流（Dittus-Boelter式）
+        else:  # 乱流（Dittus-Boelter式、冷却時）
             nusselt = 0.023 * (reynolds ** 0.8) * (prandtl ** 0.3)
         
         # 熱伝達係数の計算 (W/m²・K)
-        water_thermal_conductivity = 0.6  # W/m・K（水の熱伝導率）
         heat_transfer_coefficient = nusselt * water_thermal_conductivity / inner_diameter
         
         # 配管の熱抵抗を考慮した総括熱伝達係数
-        pipe_thickness = 0.003  # 配管厚さ（仮定値: 3mm）
+        # 外径の計算（概算）
+        if pipe_diameter in ["15A", "20A", "25A"]:
+            pipe_thickness = 0.0028  # 2.8mm
+        elif pipe_diameter in ["32A", "40A"]:
+            pipe_thickness = 0.0032  # 3.2mm
+        else:
+            pipe_thickness = 0.0036  # 3.6mm
+        
+        outer_diameter = inner_diameter + 2 * pipe_thickness
         pipe_thermal_cond = thermal_conductivity[pipe_material]
         
+        # 管外側熱伝達係数（静止水中の自然対流）
+        h_outer = 300  # W/m²·K
+        
         # 総括熱伝達係数 U (W/m²・K)
-        U = 1 / (1/heat_transfer_coefficient + pipe_thickness/pipe_thermal_cond)
+        # 内径基準での計算
+        U = 1 / (1/heat_transfer_coefficient + 
+                inner_diameter/(2*pipe_thermal_cond) * math.log(outer_diameter/inner_diameter) + 
+                inner_diameter/(outer_diameter*h_outer))
         
-        # 熱交換面積
-        heat_exchange_area = math.pi * inner_diameter * pipe_length
+        # 熱交換面積（U字管として往復を考慮）
+        total_length = pipe_length * 2  # 往復分
+        heat_exchange_area = math.pi * inner_diameter * total_length
         
-        # 水の比熱と質量流量
-        specific_heat = 4186  # J/kg・K
-        density = 1000  # kg/m³
+        # 質量流量
         mass_flow_rate = flow_rate_m3s * density  # kg/s
         
         # NTU（伝熱単位数）の計算
@@ -177,6 +210,22 @@ if page == "🔧 計算ツール":
         
         with detail_col4:
             st.metric("NTU", f"{NTU:.3f}")
+        
+        # 物性値の表示
+        st.subheader(f"物性値（平均温度 {avg_temp:.1f}℃）")
+        prop_col1, prop_col2, prop_col3, prop_col4 = st.columns(4)
+        
+        with prop_col1:
+            st.metric("動粘度", f"{kinematic_viscosity*1e6:.3f}×10⁻⁶ m²/s")
+        
+        with prop_col2:
+            st.metric("熱伝導率", f"{water_thermal_conductivity:.3f} W/m·K")
+        
+        with prop_col3:
+            st.metric("プラントル数", f"{prandtl:.2f}")
+        
+        with prop_col4:
+            st.metric("総括熱伝達係数", f"{U:.1f} W/m²·K")
 
     with col2:
         st.header("⚙️ 最適化提案")
@@ -189,7 +238,10 @@ if page == "🔧 計算ツール":
             else:
                 st.markdown("- より大口径の配管を検討")
             st.markdown("- 地下水循環システムの導入")
-            st.markdown("- 32A配管の使用")
+            if pipe_diameter != "32A":
+                st.markdown("- 32A配管の使用（最適効率）")
+            else:
+                st.markdown("- 複数の32A配管を並列配置")
         else:
             st.success("✅ 目標温度範囲内です")
 
@@ -211,8 +263,23 @@ if page == "🔧 計算ツール":
             nu = 0.023 * (re ** 0.8) * (prandtl ** 0.3)
         
         h = nu * water_thermal_conductivity / inner_d
-        U_temp = 1 / (1/h + pipe_thickness/pipe_thermal_cond)
-        A_temp = math.pi * inner_d * pipe_length
+        
+        # 外径の計算
+        if pipe_size in ["15A", "20A", "25A"]:
+            thickness = 0.0028
+        elif pipe_size in ["32A", "40A"]:
+            thickness = 0.0032
+        else:
+            thickness = 0.0036
+        
+        outer_d = inner_d + 2 * thickness
+        
+        # 総括熱伝達係数（内径基準）
+        U_temp = 1 / (1/h + 
+                     inner_d/(2*pipe_thermal_cond) * math.log(outer_d/inner_d) + 
+                     inner_d/(outer_d*h_outer))
+        
+        A_temp = math.pi * inner_d * total_length
         NTU_temp = U_temp * A_temp / (mass_flow_rate * specific_heat)
         eff_temp = 1 - math.exp(-NTU_temp)
         final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp)
@@ -222,7 +289,9 @@ if page == "🔧 計算ツール":
             "最終温度(℃)": round(final_t, 1),
             "効率(%)": round(eff_temp * 100, 1),
             "流速(m/s)": round(vel, 3),
-            "レイノルズ数": int(re)
+            "レイノルズ数": int(re),
+            "h_i(W/m²K)": int(h),
+            "U(W/m²K)": round(U_temp, 1)
         })
 
     df = pd.DataFrame(pipe_comparison)
@@ -345,10 +414,25 @@ elif page == "📚 理論解説":
     - T_final: 最終温度 [℃]
     """)
     
-    st.header("9. 配管材質の熱伝導率")
+    st.header("9. 水の物性値（温度依存）")
+    st.markdown("""
+    | 温度[℃] | ρ[kg/m³] | ν[×10⁻⁶m²/s] | k[W/(m·K)] | Cp[J/kgK] | Pr[-] |
+    |---------|----------|---------------|------------|-----------|-------|
+    | 15 | 999.1 | 1.139 | 0.589 | 4186 | 8.09 |
+    | 20 | 998.2 | 1.004 | 0.598 | 4182 | 7.01 |
+    | **22.5** | **997.6** | **0.949** | **0.603** | **4181** | **6.57** |
+    | 25 | 997.0 | 0.893 | 0.607 | 4179 | 6.13 |
+    | 30 | 995.6 | 0.801 | 0.615 | 4178 | 5.42 |
+    
+    - ρ: 密度、ν: 動粘度、k: 熱伝導率、Cp: 比熱、Pr: プラントル数
+    - **太字**: 平均温度22.5℃での参考値
+    """)
+    
+    st.header("10. 配管仕様")
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("""
+        **材質の熱伝導率**
         | 材質 | 熱伝導率 [W/m·K] |
         |------|------------------|
         | 鋼管 | 50.0 |
@@ -358,23 +442,44 @@ elif page == "📚 理論解説":
     
     with col2:
         st.markdown("""
-        | 配管口径 | 内径 [mm] |
-        |----------|----------|
-        | 15A | 16.1 |
-        | 20A | 21.6 |
-        | 25A | 27.6 |
-        | 32A | 35.7 |
-        | 40A | 41.6 |
-        | 50A | 52.9 |
-        | 65A | 67.9 |
-        | 80A | 80.7 |
+        **JIS規格配管寸法**
+        | 配管口径 | 内径 [mm] | 標準肉厚 [mm] |
+        |----------|-----------|---------------|
+        | 15A | 16.1 | 2.8 |
+        | 20A | 22.2 | 2.8 |
+        | 25A | 28.0 | 2.8 |
+        | 32A | 36.0 | 3.2 |
+        | 40A | 41.2 | 3.2 |
+        | 50A | 52.6 | 3.6 |
+        | 65A | 67.8 | 3.6 |
+        | 80A | 80.1 | 3.6 |
         """)
+    
+    st.header("11. 管外側熱伝達係数")
+    st.markdown("""
+    **自然対流熱伝達係数の目安**
+    - 静止水中：h_o = 300 W/(m²·K)
+    - 弱い対流：h_o = 500-1000 W/(m²·K)
+    - 強制対流：h_o = 1000-5000 W/(m²·K)
+    
+    本計算では、地下水中の自然対流として h_o = 300 W/(m²·K) を採用
+    """)
+    
+    st.header("12. 計算の前提条件")
+    st.markdown("""
+    1. **U字管構造**：往路と復路の総延長で計算（片道5m × 2 = 10m）
+    2. **地下水温度**：一定と仮定（大量の地下水により温度上昇は無視）
+    3. **定常状態**：非定常な温度変化は考慮しない
+    4. **一次元熱伝達**：径方向のみの熱伝達を考慮
+    5. **管内流れ**：十分発達した流れと仮定
+    """)
     
     st.info("""
     💡 **注意事項**
     - 本計算は理想的な条件下での理論値です
     - 実際の性能は、地下水の流動状態、配管の汚れ、設置条件などにより変動します
     - 長期運転時は地下水温度の上昇を考慮する必要があります
+    - 配管の経年劣化による熱伝達性能の低下も考慮が必要です
     """)
     
     # フッター
