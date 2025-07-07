@@ -87,11 +87,12 @@ if page == "計算ツール":
         </small>""", unsafe_allow_html=True)
     
     with input_col:
-        # 3カラムレイアウトで計算条件を配置
-        col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
-    
-    with col1:
-        st.subheader("基本条件")
+        # 2行2列レイアウトで計算条件を配置
+        # 1行目
+        row1_col1, row1_col2 = st.columns([1, 1], gap="medium")
+        
+        with row1_col1:
+            st.subheader("基本条件")
         
         # 目標出口温度
         target_col1, target_col2 = st.columns([3, 1])
@@ -122,8 +123,8 @@ if page == "計算ツール":
             flow_rate = st.number_input("", min_value=20.0, max_value=100.0, value=flow_rate, step=1.0, 
                                         key="flow_input", label_visibility="collapsed")
     
-    with col2:
-        st.subheader("配管条件")
+        with row1_col2:
+            st.subheader("配管条件")
         pipe_material = st.selectbox(
             "配管材質",
             ["鋼管", "アルミ管", "銅管"]
@@ -154,8 +155,11 @@ if page == "計算ツール":
             help="U字管構造のため往路復路の2本で1セットとする"
         )
     
-    with col3:
-        st.subheader("地盤条件")
+        # 2行目
+        row2_col1, row2_col2 = st.columns([1, 1], gap="medium")
+        
+        with row2_col1:
+            st.subheader("地盤条件")
         # 地下水温度
         ground_col1, ground_col2 = st.columns([3, 1])
         with ground_col1:
