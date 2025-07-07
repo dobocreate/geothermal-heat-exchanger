@@ -86,6 +86,7 @@ if page == "計算ツール":
                                     help="最終温度との比較に使用する。計算には使用しない", 
                                     key="target_slider")
         with target_col2:
+            st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
             target_temp = st.number_input("", min_value=20.0, max_value=30.0, value=target_temp, step=0.1, 
                                           key="target_input", label_visibility="collapsed")
         
@@ -94,6 +95,7 @@ if page == "計算ツール":
         with initial_col1:
             initial_temp = st.slider("入口温度 (℃)", 20.0, 40.0, 30.0, 0.1, key="initial_slider")
         with initial_col2:
+            st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
             initial_temp = st.number_input("", min_value=20.0, max_value=40.0, value=initial_temp, step=0.1, 
                                            key="initial_input", label_visibility="collapsed")
         
@@ -102,6 +104,7 @@ if page == "計算ツール":
         with flow_col1:
             flow_rate = st.slider("総流量 (L/min)", 20.0, 100.0, 50.0, 1.0, key="flow_slider")
         with flow_col2:
+            st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
             flow_rate = st.number_input("", min_value=20.0, max_value=100.0, value=flow_rate, step=1.0, 
                                         key="flow_input", label_visibility="collapsed")
     
@@ -144,6 +147,7 @@ if page == "計算ツール":
         with ground_col1:
             ground_temp = st.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1, key="ground_slider")
         with ground_col2:
+            st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
             ground_temp = st.number_input("", min_value=10.0, max_value=20.0, value=ground_temp, step=0.1, 
                                           key="ground_input", label_visibility="collapsed")
         
@@ -152,6 +156,7 @@ if page == "計算ツール":
         with length_col1:
             pipe_length = st.slider("管浸水距離 (m)", 3.0, 15.0, 5.0, 0.5, key="length_slider")
         with length_col2:
+            st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
             pipe_length = st.number_input("", min_value=3.0, max_value=15.0, value=pipe_length, step=0.5, 
                                           key="length_input", label_visibility="collapsed")
         
@@ -184,6 +189,7 @@ if page == "計算ツール":
                 with op_col1:
                     operation_minutes = st.slider("運転時間 (分)", 1, 60, 10, 1, key="operation_slider")
                 with op_col2:
+                    st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
                     operation_minutes = st.number_input("", min_value=1, max_value=60, value=operation_minutes, step=1, 
                                                         key="operation_input", label_visibility="collapsed")
                 operation_hours = operation_minutes / 60  # 時間に変換
@@ -197,6 +203,7 @@ if page == "計算ツール":
                 temp_rise_limit = st.slider("温度上昇上限値 (℃)", 5, 20, 5, 1, 
                                            help="地下水温度上昇の最大制限値", key="limit_slider")
             with limit_col2:
+                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
                 temp_rise_limit = st.number_input("", min_value=5, max_value=20, value=temp_rise_limit, step=1, 
                                                   key="limit_input", label_visibility="collapsed")
         else:
