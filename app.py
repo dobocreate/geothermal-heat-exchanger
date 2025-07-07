@@ -29,87 +29,92 @@ if page == "🔧 計算ツール":
     st.title("🌡️ 地中熱交換システム計算ツール")
     st.markdown("地中熱交換システムの性能計算と最適化を行います")
     
-    # サイドバー - 入力パラメータ
-    st.sidebar.header("📊 計算条件")
-
-    # 基本パラメータ
-    st.sidebar.subheader("基本条件")
-    initial_temp = st.sidebar.slider("初期温度 (℃)", 20.0, 40.0, 30.0, 0.1)
-    ground_temp = st.sidebar.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1)
-    target_temp = st.sidebar.slider("目標温度 (℃)", 20.0, 30.0, 23.0, 0.1, 
-                                    help="冷房運転での目標出口温度")
-    flow_rate = st.sidebar.slider("総流量 (L/min)", 20.0, 100.0, 50.0, 1.0)
-    pipe_length = st.sidebar.slider("管浸水距離 (m)", 3.0, 15.0, 5.0, 0.5)
+    # 計算条件の入力セクション
+    st.header("📊 計算条件")
     
-    # 掘削径の選択
-    boring_diameter = st.sidebar.selectbox(
-        "掘削径",
-        ["φ116", "φ250"],
-        index=1  # デフォルトはφ250
-    )
-    boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
-
-    # 配管条件
-    st.sidebar.subheader("配管条件")
-    pipe_material = st.sidebar.selectbox(
-        "配管材質",
-        ["鋼管", "アルミ管", "銅管"]
-    )
-    pipe_diameter = st.sidebar.selectbox(
-        "管径",
-        ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"],
-        index=3  # デフォルトは32A
-    )
+    # 3カラムレイアウトで計算条件を配置
+    col1, col2, col3 = st.columns(3)
     
-    # 管径別の推奨本数（参考値）
-    pipe_counts_default = {
-        "15A": 1,   # 50 L/min × 1本
-        "20A": 1,   # 50 L/min × 1本
-        "25A": 1,   # 50 L/min × 1本
-        "32A": 1,   # 12.5 L/min × 1本
-        "40A": 1,   # 25 L/min × 1本
-        "50A": 1,   # 50 L/min × 1本
-        "65A": 1,   # 50 L/min × 1本
-        "80A": 1    # 50 L/min × 1本
-    }
+    with col1:
+        st.subheader("基本条件")
+        initial_temp = st.slider("初期温度 (℃)", 20.0, 40.0, 30.0, 0.1)
+        ground_temp = st.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1)
+        target_temp = st.slider("目標温度 (℃)", 20.0, 30.0, 23.0, 0.1, 
+                                help="冷房運転での目標出口温度")
+        flow_rate = st.slider("総流量 (L/min)", 20.0, 100.0, 50.0, 1.0)
+        pipe_length = st.slider("管浸水距離 (m)", 3.0, 15.0, 5.0, 0.5)
+        
+        # 掘削径の選択
+        boring_diameter = st.selectbox(
+            "掘削径",
+            ["φ116", "φ250"],
+            index=1  # デフォルトはφ250
+        )
+        boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
     
-    # 配管セット本数の設定
-    num_pipes_user = st.sidebar.selectbox(
-        "配管セット本数",
-        options=[1, 2, 3, 4, 5],
-        index=pipe_counts_default.get(pipe_diameter, 1) - 1,
-        help="U字管構造のため往路復路の2本で1セットとする"
-    )
-
-    # 地下水温度変化の設定
-    st.sidebar.subheader("地下水温度設定")
-    consider_groundwater_temp_rise = st.sidebar.checkbox(
-        "地下水温度上昇を考慮する",
-        value=False,
-        help="熱交換による地下水温度の上昇を自動計算します"
-    )
-    
-    # 地下水循環の設定
-    if consider_groundwater_temp_rise:
-        consider_circulation = st.sidebar.checkbox(
-            "地下水の循環を考慮する",
-            value=False,
-            help="地下水が循環せず、指定時間運転した場合の温度上昇を計算"
+    with col2:
+        st.subheader("配管条件")
+        pipe_material = st.selectbox(
+            "配管材質",
+            ["鋼管", "アルミ管", "銅管"]
+        )
+        pipe_diameter = st.selectbox(
+            "管径",
+            ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"],
+            index=3  # デフォルトは32A
         )
         
-        if consider_circulation:
-            operation_minutes = st.sidebar.slider("運転時間 (分)", 1, 60, 10, 1)
-            operation_hours = operation_minutes / 60  # 時間に変換
-        else:
-            # 1回の通水時間を計算（デフォルト）
-            operation_hours = 1  # 暫定値、後で計算される
+        # 管径別の推奨本数（参考値）
+        pipe_counts_default = {
+            "15A": 1,   # 50 L/min × 1本
+            "20A": 1,   # 50 L/min × 1本
+            "25A": 1,   # 50 L/min × 1本
+            "32A": 1,   # 12.5 L/min × 1本
+            "40A": 1,   # 25 L/min × 1本
+            "50A": 1,   # 50 L/min × 1本
+            "65A": 1,   # 50 L/min × 1本
+            "80A": 1    # 50 L/min × 1本
+        }
+        
+        # 配管セット本数の設定
+        num_pipes_user = st.selectbox(
+            "配管セット本数",
+            options=[1, 2, 3, 4, 5],
+            index=pipe_counts_default.get(pipe_diameter, 1) - 1,
+            help="U字管構造のため往路復路の2本で1セットとする"
+        )
+    
+    with col3:
+        st.subheader("地下水温度設定")
+        consider_groundwater_temp_rise = st.checkbox(
+            "地下水温度上昇を考慮する",
+            value=False,
+            help="熱交換による地下水温度の上昇を自動計算します"
+        )
+        
+        # 地下水循環の設定
+        if consider_groundwater_temp_rise:
+            consider_circulation = st.checkbox(
+                "地下水の循環を考慮する",
+                value=False,
+                help="地下水が循環せず、指定時間運転した場合の温度上昇を計算"
+            )
             
-        temp_rise_limit = st.sidebar.slider("温度上昇上限値 (℃)", 5, 20, 5, 1, 
-                                           help="地下水温度上昇の最大制限値")
-    else:
-        operation_hours = 1  # デフォルト値（後で再計算される）
-        temp_rise_limit = 5  # デフォルト値
-        consider_circulation = False
+            if consider_circulation:
+                operation_minutes = st.slider("運転時間 (分)", 1, 60, 10, 1)
+                operation_hours = operation_minutes / 60  # 時間に変換
+            else:
+                # 1回の通水時間を計算（デフォルト）
+                operation_hours = 1  # 暫定値、後で計算される
+                
+            temp_rise_limit = st.slider("温度上昇上限値 (℃)", 5, 20, 5, 1, 
+                                       help="地下水温度上昇の最大制限値")
+        else:
+            operation_hours = 1  # デフォルト値（後で再計算される）
+            temp_rise_limit = 5  # デフォルト値
+            consider_circulation = False
+    
+    st.markdown("---")  # 計算条件と結果を区切る
 
     # メイン画面にタブを設置
     tab1, tab2 = st.tabs(["🔧 単一配管計算", "📊 複数配管比較"])
@@ -230,10 +235,10 @@ if page == "🔧 計算ツール":
         boring_area = math.pi * (boring_diameter_mm / 2) ** 2  # mm²
         
         if total_pipe_area > boring_area * 0.8:  # 80%を超えたら警告
-            st.sidebar.error(f"⚠️ 配管総面積が掘削径の80%を超えています！")
-            st.sidebar.warning(f"配管総面積: {total_pipe_area:.0f}mm²")
-            st.sidebar.warning(f"掘削断面積: {boring_area:.0f}mm²")
-            st.sidebar.warning(f"占有率: {total_pipe_area/boring_area*100:.1f}%")
+            st.error(f"⚠️ 配管総面積が掘削径の80%を超えています！")
+            st.warning(f"配管総面積: {total_pipe_area:.0f}mm²")
+            st.warning(f"掘削断面積: {boring_area:.0f}mm²")
+            st.warning(f"占有率: {total_pipe_area/boring_area*100:.1f}%")
         
         # 熱交換面積（U字管として往復を考慮）
         total_length = pipe_length * 2  # 往復分
