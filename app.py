@@ -26,16 +26,42 @@ st.sidebar.markdown("---")
 if "page" not in st.session_state:
     st.session_state.page = "計算ツール"
 
-# 現在のページを取得
-current_page = st.session_state.page
+# ボタンスタイルのカスタムCSS
+st.markdown("""
+<style>
+    section[data-testid="stSidebar"] .stButton > button {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# ボタンの表示
-if st.sidebar.button("🔧 計算ツール", use_container_width=True, type="primary" if current_page == "計算ツール" else "secondary"):
-    st.session_state.page = "計算ツール"
-if st.sidebar.button("📚 理論解説", use_container_width=True, type="primary" if current_page == "理論解説" else "secondary"):
-    st.session_state.page = "理論解説"
-if st.sidebar.button("📊 物性値", use_container_width=True, type="primary" if current_page == "物性値" else "secondary"):
-    st.session_state.page = "物性値"
+# ボタンをコンテナに配置
+button_col1 = st.sidebar.container()
+button_col2 = st.sidebar.container()
+button_col3 = st.sidebar.container()
+
+# 各ボタンを配置（クリック時に即座にページを変更）
+with button_col1:
+    if st.button("🔧 計算ツール", use_container_width=True, 
+                 type="primary" if st.session_state.page == "計算ツール" else "secondary",
+                 key="btn_calc"):
+        st.session_state.page = "計算ツール"
+        st.rerun()
+
+with button_col2:
+    if st.button("📚 理論解説", use_container_width=True,
+                 type="primary" if st.session_state.page == "理論解説" else "secondary",
+                 key="btn_theory"):
+        st.session_state.page = "理論解説"
+        st.rerun()
+
+with button_col3:
+    if st.button("📊 物性値", use_container_width=True,
+                 type="primary" if st.session_state.page == "物性値" else "secondary",
+                 key="btn_props"):
+        st.session_state.page = "物性値"
+        st.rerun()
 
 page = st.session_state.page
 
@@ -53,9 +79,9 @@ if page == "計算ツール":
     with col1:
         st.subheader("基本条件")
         initial_temp = st.slider("初期温度 (℃)", 20.0, 40.0, 30.0, 0.1)
-        ground_temp = st.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1)
         target_temp = st.slider("目標温度 (℃)", 20.0, 30.0, 23.0, 0.1, 
                                 help="冷房運転での目標出口温度")
+        ground_temp = st.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1)
         flow_rate = st.slider("総流量 (L/min)", 20.0, 100.0, 50.0, 1.0)
         pipe_length = st.slider("管浸水距離 (m)", 3.0, 15.0, 5.0, 0.5)
         
@@ -376,58 +402,64 @@ if page == "計算ツール":
         
         st.markdown("</div>", unsafe_allow_html=True)
         
-        # 最適化提案
-        st.markdown("---")
-        st.subheader("⚙️ 最適化提案")
-        
+        # 目標温度との比較（計算結果の下に表示）
         if final_temp > target_temp:
             st.warning(f"⚠️ 目標温度（{target_temp}℃）を超えています")
-            st.markdown("**改善提案：**")
-            if pipe_length < 20:
-                st.markdown(f"- 管浸水距離を約{20}mに延長（現在: {pipe_length}m）")
-            else:
-                st.markdown("- より大口径の配管を検討")
-            st.markdown("- 地下水循環システムの導入")
-            if pipe_diameter != "32A":
-                st.markdown("- 32A配管の使用（最適効率）")
-            else:
-                st.markdown("- 複数の32A配管を並列配置")
         else:
             st.success("✅ 目標温度範囲内です")
         
-        # 計算条件の表示
-        st.markdown("---")
-        st.subheader("📝 計算条件")
-        condition_col1, condition_col2, condition_col3 = st.columns(3)
-
-        with condition_col1:
-            st.markdown("**基本条件**")
-            st.markdown(f"- 初期温度: {initial_temp}℃")
-            st.markdown(f"- 地下水温度: {ground_temp}℃")
-            st.markdown(f"- 目標温度: {target_temp}℃")
-            if consider_groundwater_temp_rise:
-                st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise:.2f}℃（自動計算）")
-                st.markdown(f"- 最終地下水温度: {effective_ground_temp:.1f}℃")
-                if consider_circulation:
-                    st.markdown(f"- 運転時間: {operation_minutes}分")
-                else:
-                    st.markdown(f"- 通水時間: {operation_hours*3600:.1f}秒（{operation_hours*60:.1f}分）")
-                st.markdown(f"- 温度上昇上限: {temp_rise_limit}℃")
-            st.markdown(f"- 掘削径: {boring_diameter}")
-
-        with condition_col2:
-            st.markdown("**流量条件**")
-            st.markdown(f"- 総流量: {flow_rate} L/min")
-            st.markdown(f"- 管浸水距離: {pipe_length} m")
-            st.markdown(f"- 管径: {pipe_diameter}")
-
-        with condition_col3:
-            st.markdown("**配管仕様**")
-            st.markdown(f"- 配管材質: {pipe_material}")
-            st.markdown(f"- 内径: {inner_diameter*1000:.1f} mm")
-            st.markdown(f"- 外径: {outer_diameter*1000:.1f} mm")
-            st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
-            st.markdown(f"- 配管セット本数: {num_pipes} セット")
+        # 最適化提案（コメントアウト - 将来的に復活しやすいように）
+        # st.markdown("---")
+        # st.subheader("⚙️ 最適化提案")
+        # 
+        # if final_temp > target_temp:
+        #     st.warning(f"⚠️ 目標温度（{target_temp}℃）を超えています")
+        #     st.markdown("**改善提案：**")
+        #     if pipe_length < 20:
+        #         st.markdown(f"- 管浸水距離を約{20}mに延長（現在: {pipe_length}m）")
+        #     else:
+        #         st.markdown("- より大口径の配管を検討")
+        #     st.markdown("- 地下水循環システムの導入")
+        #     if pipe_diameter != "32A":
+        #         st.markdown("- 32A配管の使用（最適効率）")
+        #     else:
+        #         st.markdown("- 複数の32A配管を並列配置")
+        # else:
+        #     st.success("✅ 目標温度範囲内です")
+        
+        # 計算条件の表示（コメントアウト - 将来的に復活しやすいように）
+        # st.markdown("---")
+        # st.subheader("📝 計算条件")
+        # condition_col1, condition_col2, condition_col3 = st.columns(3)
+        # 
+        # with condition_col1:
+        #     st.markdown("**基本条件**")
+        #     st.markdown(f"- 初期温度: {initial_temp}℃")
+        #     st.markdown(f"- 地下水温度: {ground_temp}℃")
+        #     st.markdown(f"- 目標温度: {target_temp}℃")
+        #     if consider_groundwater_temp_rise:
+        #         st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise:.2f}℃（自動計算）")
+        #         st.markdown(f"- 最終地下水温度: {effective_ground_temp:.1f}℃")
+        #         if consider_circulation:
+        #             st.markdown(f"- 運転時間: {operation_minutes}分")
+        #         else:
+        #             st.markdown(f"- 通水時間: {operation_hours*3600:.1f}秒（{operation_hours*60:.1f}分）")
+        #         st.markdown(f"- 温度上昇上限: {temp_rise_limit}℃")
+        #     st.markdown(f"- 掘削径: {boring_diameter}")
+        # 
+        # with condition_col2:
+        #     st.markdown("**流量条件**")
+        #     st.markdown(f"- 総流量: {flow_rate} L/min")
+        #     st.markdown(f"- 管浸水距離: {pipe_length} m")
+        #     st.markdown(f"- 管径: {pipe_diameter}")
+        # 
+        # with condition_col3:
+        #     st.markdown("**配管仕様**")
+        #     st.markdown(f"- 配管材質: {pipe_material}")
+        #     st.markdown(f"- 内径: {inner_diameter*1000:.1f} mm")
+        #     st.markdown(f"- 外径: {outer_diameter*1000:.1f} mm")
+        #     st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
+        #     st.markdown(f"- 配管セット本数: {num_pipes} セット")
         
         # 地下水温度上昇の詳細（チェックされている場合）
         if consider_groundwater_temp_rise:
