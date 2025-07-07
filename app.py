@@ -22,16 +22,20 @@ st.set_page_config(
 st.sidebar.title("🌡️ 地中熱交換システム")
 st.sidebar.markdown("---")
 
-if st.sidebar.button("🔧 計算ツール", use_container_width=True, type="primary" if "page" not in st.session_state or st.session_state.page == "計算ツール" else "secondary"):
-    st.session_state.page = "計算ツール"
-if st.sidebar.button("📚 理論解説", use_container_width=True, type="primary" if "page" in st.session_state and st.session_state.page == "理論解説" else "secondary"):
-    st.session_state.page = "理論解説"
-if st.sidebar.button("📊 物性値", use_container_width=True, type="primary" if "page" in st.session_state and st.session_state.page == "物性値" else "secondary"):
-    st.session_state.page = "物性値"
-
 # ページの初期化
 if "page" not in st.session_state:
     st.session_state.page = "計算ツール"
+
+# 現在のページを取得
+current_page = st.session_state.page
+
+# ボタンの表示
+if st.sidebar.button("🔧 計算ツール", use_container_width=True, type="primary" if current_page == "計算ツール" else "secondary"):
+    st.session_state.page = "計算ツール"
+if st.sidebar.button("📚 理論解説", use_container_width=True, type="primary" if current_page == "理論解説" else "secondary"):
+    st.session_state.page = "理論解説"
+if st.sidebar.button("📊 物性値", use_container_width=True, type="primary" if current_page == "物性値" else "secondary"):
+    st.session_state.page = "物性値"
 
 page = st.session_state.page
 
@@ -47,7 +51,6 @@ if page == "計算ツール":
     col1, col2, col3 = st.columns([1, 1, 1], gap="large")
     
     with col1:
-        st.markdown("<div style='background-color: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #1f77b4;'>", unsafe_allow_html=True)
         st.subheader("基本条件")
         initial_temp = st.slider("初期温度 (℃)", 20.0, 40.0, 30.0, 0.1)
         ground_temp = st.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1)
@@ -63,10 +66,8 @@ if page == "計算ツール":
             index=1  # デフォルトはφ250
         )
         boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
-        st.markdown("</div>", unsafe_allow_html=True)
     
     with col2:
-        st.markdown("<div style='background-color: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #ff7f0e;'>", unsafe_allow_html=True)
         st.subheader("配管条件")
         pipe_material = st.selectbox(
             "配管材質",
@@ -97,10 +98,8 @@ if page == "計算ツール":
             index=pipe_counts_default.get(pipe_diameter, 1) - 1,
             help="U字管構造のため往路復路の2本で1セットとする"
         )
-        st.markdown("</div>", unsafe_allow_html=True)
     
     with col3:
-        st.markdown("<div style='background-color: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #2ca02c;'>", unsafe_allow_html=True)
         st.subheader("地下水温度設定")
         consider_groundwater_temp_rise = st.checkbox(
             "地下水温度上昇を考慮する",
@@ -129,7 +128,6 @@ if page == "計算ツール":
             operation_hours = 1  # デフォルト値（後で再計算される）
             temp_rise_limit = 5  # デフォルト値
             consider_circulation = False
-        st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("---")  # 計算条件と結果を区切る
 
@@ -640,7 +638,7 @@ if page == "計算ツール":
             # 地下水温度上昇の計算（各配管サイズごと）
             if consider_groundwater_temp_rise:
                 # 熱交換量の計算 [W]
-                heat_rate_temp = mass_flow_per_p * n_pipes * density * specific_heat * (initial_temp - final_t)
+                heat_rate_temp = mass_flow_per_p * n_pipes * specific_heat * (initial_temp - final_t)
                 
                 # 地下水の体積計算（ボーリング孔内のみ）
                 boring_volume_temp = math.pi * (boring_diameter_mm / 2000) ** 2 * pipe_length  # m³
