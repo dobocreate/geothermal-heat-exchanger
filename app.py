@@ -234,7 +234,17 @@ if page == "計算ツール":
     st.markdown("---")  # 計算条件と結果を区切る
 
     # メイン画面にタブを設置
-    tab1, tab2 = st.tabs(["🔧 単一配管計算", "📊 複数配管比較"])
+    # タブのフォントサイズを調整
+    st.markdown("""
+    <style>
+    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {
+        font-size: 1rem;
+        font-weight: 400;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    tab1, tab2 = st.tabs(["🔧 単一配管計算", "📊 複数配管比較計算"])
     
     with tab1:
         # 単一配管計算ページ
