@@ -125,109 +125,109 @@ if page == "計算ツール":
     
         with row1_col2:
             st.subheader("配管条件")
-        pipe_material = st.selectbox(
-            "配管材質",
-            ["鋼管", "アルミ管", "銅管"]
-        )
-        pipe_diameter = st.selectbox(
-            "管径",
-            ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"],
-            index=3  # デフォルトは32A
-        )
-        
-        # 管径別の推奨本数（参考値）
-        pipe_counts_default = {
-            "15A": 1,   # 50 L/min × 1本
-            "20A": 1,   # 50 L/min × 1本
-            "25A": 1,   # 50 L/min × 1本
-            "32A": 1,   # 12.5 L/min × 1本
-            "40A": 1,   # 25 L/min × 1本
-            "50A": 1,   # 50 L/min × 1本
-            "65A": 1,   # 50 L/min × 1本
-            "80A": 1    # 50 L/min × 1本
-        }
-        
-        # 配管セット本数の設定
-        num_pipes_user = st.selectbox(
-            "配管セット本数",
-            options=[1, 2, 3, 4, 5],
-            index=pipe_counts_default.get(pipe_diameter, 1) - 1,
-            help="U字管構造のため往路復路の2本で1セットとする"
-        )
+            pipe_material = st.selectbox(
+                "配管材質",
+                ["鋼管", "アルミ管", "銅管"]
+            )
+            pipe_diameter = st.selectbox(
+                "管径",
+                ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"],
+                index=3  # デフォルトは32A
+            )
+            
+            # 管径別の推奨本数（参考値）
+            pipe_counts_default = {
+                "15A": 1,   # 50 L/min × 1本
+                "20A": 1,   # 50 L/min × 1本
+                "25A": 1,   # 50 L/min × 1本
+                "32A": 1,   # 12.5 L/min × 1本
+                "40A": 1,   # 25 L/min × 1本
+                "50A": 1,   # 50 L/min × 1本
+                "65A": 1,   # 50 L/min × 1本
+                "80A": 1    # 50 L/min × 1本
+            }
+            
+            # 配管セット本数の設定
+            num_pipes_user = st.selectbox(
+                "配管セット本数",
+                options=[1, 2, 3, 4, 5],
+                index=pipe_counts_default.get(pipe_diameter, 1) - 1,
+                help="U字管構造のため往路復路の2本で1セットとする"
+            )
     
         # 2行目
         row2_col1, row2_col2 = st.columns([1, 1], gap="medium")
         
         with row2_col1:
             st.subheader("地盤条件")
-        # 地下水温度
-        ground_col1, ground_col2 = st.columns([3, 1])
-        with ground_col1:
-            ground_temp = st.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1, key="ground_slider")
-        with ground_col2:
-            st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-            ground_temp = st.number_input("", min_value=10.0, max_value=20.0, value=ground_temp, step=0.1, 
-                                          key="ground_input", label_visibility="collapsed")
-        
-        # 管浸水距離
-        length_col1, length_col2 = st.columns([3, 1])
-        with length_col1:
-            pipe_length = st.slider("管浸水距離 (m)", 3.0, 15.0, 5.0, 0.5, key="length_slider")
-        with length_col2:
-            st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-            pipe_length = st.number_input("", min_value=3.0, max_value=15.0, value=pipe_length, step=0.5, 
-                                          key="length_input", label_visibility="collapsed")
-        
-        # 掘削径の選択
-        boring_diameter = st.selectbox(
-            "掘削径",
-            ["φ116", "φ250"],
-            index=1,  # デフォルトはφ250
-            help="配管用の掘削径で、配管後に地下水などで充満される範囲を示す"
-        )
-        boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
-        
-        consider_groundwater_temp_rise = st.checkbox(
-            "地下水温度上昇を考慮する",
-            value=False,
-            help="熱交換による地下水温度の上昇を自動計算します"
-        )
-        
-        # 地下水循環の設定
-        if consider_groundwater_temp_rise:
-            consider_circulation = st.checkbox(
-                "地下水の循環を考慮する",
+            # 地下水温度
+            ground_col1, ground_col2 = st.columns([3, 1])
+            with ground_col1:
+                ground_temp = st.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1, key="ground_slider")
+            with ground_col2:
+                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+                ground_temp = st.number_input("", min_value=10.0, max_value=20.0, value=ground_temp, step=0.1, 
+                                              key="ground_input", label_visibility="collapsed")
+            
+            # 管浸水距離
+            length_col1, length_col2 = st.columns([3, 1])
+            with length_col1:
+                pipe_length = st.slider("管浸水距離 (m)", 3.0, 15.0, 5.0, 0.5, key="length_slider")
+            with length_col2:
+                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+                pipe_length = st.number_input("", min_value=3.0, max_value=15.0, value=pipe_length, step=0.5, 
+                                              key="length_input", label_visibility="collapsed")
+            
+            # 掘削径の選択
+            boring_diameter = st.selectbox(
+                "掘削径",
+                ["φ116", "φ250"],
+                index=1,  # デフォルトはφ250
+                help="配管用の掘削径で、配管後に地下水などで充満される範囲を示す"
+            )
+            boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
+            
+            consider_groundwater_temp_rise = st.checkbox(
+                "地下水温度上昇を考慮する",
                 value=False,
-                help="地下水が循環せず、指定時間運転した場合の温度上昇を計算"
+                help="熱交換による地下水温度の上昇を自動計算します"
             )
             
-            if consider_circulation:
-                # 運転時間
-                op_col1, op_col2 = st.columns([3, 1])
-                with op_col1:
-                    operation_minutes = st.slider("運転時間 (分)", 1, 60, 10, 1, key="operation_slider")
-                with op_col2:
-                    st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                    operation_minutes = st.number_input("", min_value=1, max_value=60, value=operation_minutes, step=1, 
-                                                        key="operation_input", label_visibility="collapsed")
-                operation_hours = operation_minutes / 60  # 時間に変換
-            else:
-                # 1回の通水時間を計算（デフォルト）
-                operation_hours = 1  # 暫定値、後で計算される
+            # 地下水循環の設定
+            if consider_groundwater_temp_rise:
+                consider_circulation = st.checkbox(
+                    "地下水の循環を考慮する",
+                    value=False,
+                    help="地下水が循環せず、指定時間運転した場合の温度上昇を計算"
+                )
                 
-            # 温度上昇上限値
-            limit_col1, limit_col2 = st.columns([3, 1])
-            with limit_col1:
-                temp_rise_limit = st.slider("温度上昇上限値 (℃)", 5, 20, 5, 1, 
-                                           help="地下水温度上昇の最大制限値", key="limit_slider")
-            with limit_col2:
-                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                temp_rise_limit = st.number_input("", min_value=5, max_value=20, value=temp_rise_limit, step=1, 
-                                                  key="limit_input", label_visibility="collapsed")
-        else:
-            operation_hours = 1  # デフォルト値（後で再計算される）
-            temp_rise_limit = 5  # デフォルト値
-            consider_circulation = False
+                if consider_circulation:
+                    # 運転時間
+                    op_col1, op_col2 = st.columns([3, 1])
+                    with op_col1:
+                        operation_minutes = st.slider("運転時間 (分)", 1, 60, 10, 1, key="operation_slider")
+                    with op_col2:
+                        st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+                        operation_minutes = st.number_input("", min_value=1, max_value=60, value=operation_minutes, step=1, 
+                                                            key="operation_input", label_visibility="collapsed")
+                    operation_hours = operation_minutes / 60  # 時間に変換
+                else:
+                    # 1回の通水時間を計算（デフォルト）
+                    operation_hours = 1  # 暫定値、後で計算される
+                    
+                # 温度上昇上限値
+                limit_col1, limit_col2 = st.columns([3, 1])
+                with limit_col1:
+                    temp_rise_limit = st.slider("温度上昇上限値 (℃)", 5, 20, 5, 1, 
+                                               help="地下水温度上昇の最大制限値", key="limit_slider")
+                with limit_col2:
+                    st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+                    temp_rise_limit = st.number_input("", min_value=5, max_value=20, value=temp_rise_limit, step=1, 
+                                                      key="limit_input", label_visibility="collapsed")
+            else:
+                operation_hours = 1  # デフォルト値（後で再計算される）
+                temp_rise_limit = 5  # デフォルト値
+                consider_circulation = False
     
     st.markdown("---")  # 計算条件と結果を区切る
 
