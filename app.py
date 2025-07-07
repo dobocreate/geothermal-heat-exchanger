@@ -78,9 +78,9 @@ if page == "計算ツール":
     
     with col1:
         st.subheader("基本条件")
-        target_temp = st.slider("目標温度 (℃)", 20.0, 30.0, 23.0, 0.1, 
-                                help="冷房運転での目標出口温度")
-        initial_temp = st.slider("初期温度 (℃)", 20.0, 40.0, 30.0, 0.1)
+        target_temp = st.slider("目標出口温度 (℃)", 20.0, 30.0, 23.0, 0.1, 
+                                help="最終温度との比較に使用する。計算には使用しない")
+        initial_temp = st.slider("入口温度 (℃)", 20.0, 40.0, 30.0, 0.1)
         flow_rate = st.slider("総流量 (L/min)", 20.0, 100.0, 50.0, 1.0)
     
     with col2:
