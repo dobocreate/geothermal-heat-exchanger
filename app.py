@@ -19,12 +19,23 @@ st.set_page_config(
 )
 
 # サイドバー - ページ選択
-page = st.sidebar.selectbox(
-    "ページ選択",
-    ["🔧 計算ツール", "📚 理論解説", "📊 物性値"]
-)
+st.sidebar.title("🌡️ 地中熱交換システム")
+st.sidebar.markdown("---")
 
-if page == "🔧 計算ツール":
+if st.sidebar.button("🔧 計算ツール", use_container_width=True, type="primary" if "page" not in st.session_state or st.session_state.page == "計算ツール" else "secondary"):
+    st.session_state.page = "計算ツール"
+if st.sidebar.button("📚 理論解説", use_container_width=True, type="primary" if "page" in st.session_state and st.session_state.page == "理論解説" else "secondary"):
+    st.session_state.page = "理論解説"
+if st.sidebar.button("📊 物性値", use_container_width=True, type="primary" if "page" in st.session_state and st.session_state.page == "物性値" else "secondary"):
+    st.session_state.page = "物性値"
+
+# ページの初期化
+if "page" not in st.session_state:
+    st.session_state.page = "計算ツール"
+
+page = st.session_state.page
+
+if page == "計算ツール":
     # タイトル
     st.title("🌡️ 地中熱交換システム計算ツール")
     st.markdown("地中熱交換システムの性能計算と最適化を行います")
@@ -32,10 +43,11 @@ if page == "🔧 計算ツール":
     # 計算条件の入力セクション
     st.header("📊 計算条件")
     
-    # 3カラムレイアウトで計算条件を配置
-    col1, col2, col3 = st.columns(3)
+    # 3カラムレイアウトで計算条件を配置（間隔を広げる）
+    col1, col2, col3 = st.columns([1, 1, 1], gap="large")
     
     with col1:
+        st.markdown("<div style='background-color: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #1f77b4;'>", unsafe_allow_html=True)
         st.subheader("基本条件")
         initial_temp = st.slider("初期温度 (℃)", 20.0, 40.0, 30.0, 0.1)
         ground_temp = st.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1)
@@ -51,8 +63,10 @@ if page == "🔧 計算ツール":
             index=1  # デフォルトはφ250
         )
         boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
+        st.markdown("</div>", unsafe_allow_html=True)
     
     with col2:
+        st.markdown("<div style='background-color: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #ff7f0e;'>", unsafe_allow_html=True)
         st.subheader("配管条件")
         pipe_material = st.selectbox(
             "配管材質",
@@ -83,8 +97,10 @@ if page == "🔧 計算ツール":
             index=pipe_counts_default.get(pipe_diameter, 1) - 1,
             help="U字管構造のため往路復路の2本で1セットとする"
         )
+        st.markdown("</div>", unsafe_allow_html=True)
     
     with col3:
+        st.markdown("<div style='background-color: #f8f9fa; padding: 15px; border-radius: 10px; border-left: 4px solid #2ca02c;'>", unsafe_allow_html=True)
         st.subheader("地下水温度設定")
         consider_groundwater_temp_rise = st.checkbox(
             "地下水温度上昇を考慮する",
@@ -113,6 +129,7 @@ if page == "🔧 計算ツール":
             operation_hours = 1  # デフォルト値（後で再計算される）
             temp_rise_limit = 5  # デフォルト値
             consider_circulation = False
+        st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("---")  # 計算条件と結果を区切る
 
@@ -312,7 +329,12 @@ if page == "🔧 計算ツール":
             efficiency = 0
         
         # 結果表示
-        st.subheader("📈 計算結果")
+        st.markdown("---")
+        st.markdown("<h2 style='text-align: center; color: #1f77b4; background-color: #f0f2f6; padding: 15px; border-radius: 10px;'>📈 計算結果</h2>", unsafe_allow_html=True)
+        st.markdown("")
+        
+        # 重要な結果を強調表示
+        st.markdown("<div style='background-color: #e8f4f8; padding: 20px; border-radius: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
         
         # 1行目：最終温度、熱交換効率、温度降下、配管セット本数
         row1_col1, row1_col2, row1_col3, row1_col4 = st.columns(4)
@@ -353,6 +375,8 @@ if page == "🔧 計算ツール":
         
         with row2_col4:
             st.metric("比熱", f"{specific_heat:.0f} J/kg·K")
+        
+        st.markdown("</div>", unsafe_allow_html=True)
         
         # 最適化提案
         st.markdown("---")
@@ -718,7 +742,7 @@ if page == "🔧 計算ツール":
         st.markdown("---")
         st.markdown("**開発者**: dobocreate | **バージョン**: 1.2.0 | **更新**: 2025-01-06")
 
-elif page == "📚 理論解説":
+elif page == "理論解説":
     st.title("📚 地中熱交換システムの理論解説")
     st.markdown("地中熱交換システムの計算に使用している理論と数式について解説します")
     
@@ -872,7 +896,7 @@ elif page == "📚 理論解説":
     st.markdown("---")
     st.markdown("**開発者**: dobocreate | **バージョン**: 1.2.0 | **更新**: 2025-01-06")
 
-elif page == "📊 物性値":
+elif page == "物性値":
     st.title("📊 物性値")
     st.markdown("地中熱交換システムの計算に使用する物性値です")
     

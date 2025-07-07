@@ -19,7 +19,8 @@
       "Bash(claude-code --version)",
       "Bash(streamlit run:*)",
       "Bash(python:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(pkill:*)"
     ],
     "deny": []
   }
