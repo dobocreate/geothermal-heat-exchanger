@@ -78,20 +78,10 @@ if page == "計算ツール":
     
     with col1:
         st.subheader("基本条件")
-        initial_temp = st.slider("初期温度 (℃)", 20.0, 40.0, 30.0, 0.1)
         target_temp = st.slider("目標温度 (℃)", 20.0, 30.0, 23.0, 0.1, 
                                 help="冷房運転での目標出口温度")
-        ground_temp = st.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1)
+        initial_temp = st.slider("初期温度 (℃)", 20.0, 40.0, 30.0, 0.1)
         flow_rate = st.slider("総流量 (L/min)", 20.0, 100.0, 50.0, 1.0)
-        pipe_length = st.slider("管浸水距離 (m)", 3.0, 15.0, 5.0, 0.5)
-        
-        # 掘削径の選択
-        boring_diameter = st.selectbox(
-            "掘削径",
-            ["φ116", "φ250"],
-            index=1  # デフォルトはφ250
-        )
-        boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
     
     with col2:
         st.subheader("配管条件")
@@ -126,7 +116,19 @@ if page == "計算ツール":
         )
     
     with col3:
-        st.subheader("地下水温度設定")
+        st.subheader("地盤条件")
+        ground_temp = st.slider("地下水温度 (℃)", 10.0, 20.0, 15.0, 0.1)
+        pipe_length = st.slider("管浸水距離 (m)", 3.0, 15.0, 5.0, 0.5)
+        
+        # 掘削径の選択
+        boring_diameter = st.selectbox(
+            "掘削径",
+            ["φ116", "φ250"],
+            index=1,  # デフォルトはφ250
+            help="配管用の掘削径で、配管後に地下水などで充満される範囲を示す"
+        )
+        boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
+        
         consider_groundwater_temp_rise = st.checkbox(
             "地下水温度上昇を考慮する",
             value=False,
