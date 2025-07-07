@@ -353,12 +353,15 @@ if page == "計算ツール":
             efficiency = 0
         
         # 結果表示
-        st.markdown("---")
-        st.markdown("<h2 style='text-align: center; color: #1f77b4; background-color: #f0f2f6; padding: 15px; border-radius: 10px;'>📈 計算結果</h2>", unsafe_allow_html=True)
-        st.markdown("")
+        st.subheader("📈 計算結果")
         
-        # 重要な結果を強調表示
-        st.markdown("<div style='background-color: #e8f4f8; padding: 20px; border-radius: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+        # 目標温度との比較（計算結果の上に表示）
+        if final_temp > target_temp:
+            st.warning(f"⚠️ 目標温度（{target_temp}℃）を超えています")
+        else:
+            st.success("✅ 目標温度範囲内です")
+        
+        st.markdown("")  # スペースを追加
         
         # 1行目：最終温度、熱交換効率、温度降下、配管セット本数
         row1_col1, row1_col2, row1_col3, row1_col4 = st.columns(4)
@@ -400,13 +403,7 @@ if page == "計算ツール":
         with row2_col4:
             st.metric("比熱", f"{specific_heat:.0f} J/kg·K")
         
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # 目標温度との比較（計算結果の下に表示）
-        if final_temp > target_temp:
-            st.warning(f"⚠️ 目標温度（{target_temp}℃）を超えています")
-        else:
-            st.success("✅ 目標温度範囲内です")
+        # 結果表示終了
         
         # 最適化提案（コメントアウト - 将来的に復活しやすいように）
         # st.markdown("---")
