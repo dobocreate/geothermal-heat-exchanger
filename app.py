@@ -79,7 +79,7 @@ if page == "計算ツール":
     with fig_col:
         st.image("geothermal.jpg", 
                  caption="地中熱交換システムの構造", 
-                 use_column_width=True)
+                 use_container_width=True)
         st.markdown("""<small>
         ・管浸水距離 L: U字管の深さ<br>
         ・掘削径 φ: ボーリング孔の直径<br>
