@@ -541,45 +541,59 @@ if page == "計算ツール":
         
         st.markdown("")  # スペースを追加
         
-        # 1行目：最終温度、熱交換効率、温度降下、配管セット本数
-        row1_col1, row1_col2, row1_col3, row1_col4 = st.columns(4)
+        # 重要な2つの指標を枠線で強調表示
+        main_col1, main_col2 = st.columns(2)
         
-        with row1_col1:
-            st.metric("出口温度", f"{final_temp:.1f}℃", f"{final_temp - initial_temp:.1f}℃")
+        with main_col1:
+            st.markdown(f"""
+            <div style="border: 3px solid #ff4b4b; border-radius: 10px; padding: 20px; background-color: #fff5f5; text-align: center;">
+                <h3 style="margin: 0; color: #ff4b4b; font-size: 18px;">🌡️ 出口温度</h3>
+                <h1 style="margin: 10px 0; color: #333; font-size: 36px;">{final_temp:.1f}℃</h1>
+                <p style="margin: 0; color: #666; font-size: 14px;">温度降下: {initial_temp - final_temp:.1f}℃</p>
+            </div>
+            """, unsafe_allow_html=True)
         
-        with row1_col2:
+        with main_col2:
+            if consider_groundwater_temp_rise:
+                st.markdown(f"""
+                <div style="border: 3px solid #1976d2; border-radius: 10px; padding: 20px; background-color: #f0f7ff; text-align: center;">
+                    <h3 style="margin: 0; color: #1976d2; font-size: 18px;">💧 最終地下水温</h3>
+                    <h1 style="margin: 10px 0; color: #333; font-size: 36px;">{effective_ground_temp:.1f}℃</h1>
+                    <p style="margin: 0; color: #666; font-size: 14px;">温度上昇: +{groundwater_temp_rise:.1f}℃</p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style="border: 3px solid #1976d2; border-radius: 10px; padding: 20px; background-color: #f0f7ff; text-align: center;">
+                    <h3 style="margin: 0; color: #1976d2; font-size: 18px;">💧 地下水温</h3>
+                    <h1 style="margin: 10px 0; color: #333; font-size: 36px;">{effective_ground_temp:.1f}℃</h1>
+                    <p style="margin: 0; color: #666; font-size: 14px;">初期温度のまま</p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        st.markdown("")  # スペース追加
+        
+        # その他の指標（1行4列）
+        sub_col1, sub_col2, sub_col3, sub_col4 = st.columns(4)
+        
+        with sub_col1:
             st.metric("熱交換効率", f"{efficiency:.1f}%")
         
-        with row1_col3:
-            st.metric("温度降下", f"{initial_temp - final_temp:.1f}℃")
-        
-        with row1_col4:
-            st.metric("配管セット本数", f"{num_pipes} セット", f"1セットあたり {flow_per_pipe:.1f} L/min")
-        
-        # 2行目：地下水温、熱交換量、地下水体積、比熱
-        row2_col1, row2_col2, row2_col3, row2_col4 = st.columns(4)
-        
-        with row2_col1:
-            if consider_groundwater_temp_rise:
-                st.metric("最終地下水温", f"{effective_ground_temp:.1f}℃", f"+{groundwater_temp_rise:.1f}℃")
-            else:
-                st.metric("地下水温", f"{effective_ground_temp:.1f}℃")
-        
-        with row2_col2:
+        with sub_col2:
             if consider_groundwater_temp_rise:
                 st.metric("熱交換量", f"{heat_exchange_rate/1000:.1f} kW")
             else:
                 heat_exchange_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (initial_temp - final_temp)
                 st.metric("熱交換量", f"{heat_exchange_rate/1000:.1f} kW")
         
-        with row2_col3:
+        with sub_col3:
             if consider_groundwater_temp_rise:
                 st.metric("地下水体積", f"{groundwater_volume:.3f} m³")
             else:
                 st.metric("地下水体積", "-")
         
-        with row2_col4:
-            st.metric("比熱", f"{specific_heat:.0f} J/kg·K")
+        with sub_col4:
+            st.metric("配管本数", f"{num_pipes} セット")
         
         # 結果表示終了
         
