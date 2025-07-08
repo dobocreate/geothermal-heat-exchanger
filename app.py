@@ -65,7 +65,7 @@ page = st.session_state.page
 
 if page == "計算ツール":
     # タイトル
-    st.markdown("<h1 style='text-align: center;'>🌡️ 地中熱交換シミュレーター</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🌡️ 地中熱交換簡易シミュレーター</h1>", unsafe_allow_html=True)
     st.markdown("地中に設置した管を通して通水した水の温度変化をシミュレーションするツールです。")
     
     # 計算条件の入力セクション
