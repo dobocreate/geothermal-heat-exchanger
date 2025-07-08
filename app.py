@@ -541,8 +541,8 @@ if page == "計算ツール":
         
         st.markdown("")  # スペースを追加
         
-        # 重要な2つの指標を枠線で強調表示
-        main_col1, main_col2 = st.columns(2)
+        # 重要な3つの指標を枠線で強調表示
+        main_col1, main_col2, main_col3 = st.columns(3)
         
         with main_col1:
             st.markdown(f"""
@@ -570,6 +570,29 @@ if page == "計算ツール":
                     <p style="margin: 0; color: #666; font-size: 14px;">初期温度のまま</p>
                 </div>
                 """, unsafe_allow_html=True)
+        
+        with main_col3:
+            # 通水時間の計算
+            total_pipe_length = pipe_length * 2  # U字管往復
+            transit_time_seconds = total_pipe_length / velocity
+            transit_time_minutes = transit_time_seconds / 60
+            
+            if consider_circulation:
+                time_display = f"{operation_minutes}"
+                time_unit = "分"
+                time_description = "循環運転時間"
+            else:
+                time_display = f"{transit_time_minutes:.1f}"
+                time_unit = "分"
+                time_description = "1回通水時間"
+            
+            st.markdown(f"""
+            <div style="border: 3px solid #4caf50; border-radius: 10px; padding: 20px; background-color: #f1f8e9; text-align: center;">
+                <h3 style="margin: 0; color: #4caf50; font-size: 18px;">⏱️ 通水時間</h3>
+                <h1 style="margin: 10px 0; color: #333; font-size: 36px;">{time_display}{time_unit}</h1>
+                <p style="margin: 0; color: #666; font-size: 14px;">{time_description}</p>
+            </div>
+            """, unsafe_allow_html=True)
         
         st.markdown("")  # スペース追加
         
