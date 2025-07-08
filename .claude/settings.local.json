@@ -20,7 +20,9 @@
       "Bash(streamlit run:*)",
       "Bash(python:*)",
       "Bash(rg:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(git pull:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }
