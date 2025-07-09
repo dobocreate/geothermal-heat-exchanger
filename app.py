@@ -173,10 +173,10 @@ if page == "計算ツール":
                 st.session_state.ground_value = 15.0
             
             with ground_col1:
-                ground_temp_slider = st.slider("地下水温度 (℃)", 10.0, 20.0, st.session_state.ground_value, 0.1, key="ground_slider")
+                ground_temp_slider = st.slider("地下水温度 (℃)", 0.0, 20.0, st.session_state.ground_value, 0.1, key="ground_slider")
             with ground_col2:
                 st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                ground_temp_input = st.number_input("", min_value=10.0, max_value=20.0, value=st.session_state.ground_value, step=0.1, 
+                ground_temp_input = st.number_input("", min_value=0.0, max_value=20.0, value=st.session_state.ground_value, step=0.1, 
                                                    key="ground_input", label_visibility="collapsed")
             
             if ground_temp_slider != st.session_state.ground_value:
@@ -195,10 +195,10 @@ if page == "計算ツール":
                 st.session_state.length_value = 5.0
             
             with length_col1:
-                pipe_length_slider = st.slider("管浸水距離 (m)", 3.0, 15.0, st.session_state.length_value, 0.5, key="length_slider")
+                pipe_length_slider = st.slider("管浸水距離 (m)", 1.0, 30.0, st.session_state.length_value, 0.5, key="length_slider")
             with length_col2:
                 st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                pipe_length_input = st.number_input("", min_value=3.0, max_value=15.0, value=st.session_state.length_value, step=0.5, 
+                pipe_length_input = st.number_input("", min_value=1.0, max_value=30.0, value=st.session_state.length_value, step=0.5, 
                                                    key="length_input", label_visibility="collapsed")
             
             if pipe_length_slider != st.session_state.length_value:
@@ -550,7 +550,7 @@ if page == "計算ツール":
             st.markdown(f"""
             <div style="border: 3px solid #ff4b4b; border-radius: 10px; padding: 13px; background-color: #fff5f5; text-align: center;">
                 <h3 style="margin: 0; color: #ff4b4b; font-size: 18px;">🌡️ 出口温度</h3>
-                <h1 style="margin: 7px 0; color: #333; font-size: 36px;">{final_temp:.1f}℃</h1>
+                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{final_temp:.1f}℃</h1>
                 <p style="margin: 0; color: #666; font-size: 14px;">温度降下: {initial_temp - final_temp:.1f}℃</p>
             </div>
             """, unsafe_allow_html=True)
@@ -560,7 +560,7 @@ if page == "計算ツール":
                 st.markdown(f"""
                 <div style="border: 3px solid #1976d2; border-radius: 10px; padding: 13px; background-color: #f0f7ff; text-align: center;">
                     <h3 style="margin: 0; color: #1976d2; font-size: 18px;">💧 地下水温</h3>
-                    <h1 style="margin: 7px 0; color: #333; font-size: 36px;">{effective_ground_temp:.1f}℃</h1>
+                    <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{effective_ground_temp:.1f}℃</h1>
                     <p style="margin: 0; color: #666; font-size: 14px;">温度上昇: +{groundwater_temp_rise:.1f}℃</p>
                 </div>
                 """, unsafe_allow_html=True)
@@ -568,7 +568,7 @@ if page == "計算ツール":
                 st.markdown(f"""
                 <div style="border: 3px solid #1976d2; border-radius: 10px; padding: 13px; background-color: #f0f7ff; text-align: center;">
                     <h3 style="margin: 0; color: #1976d2; font-size: 18px;">💧 地下水温</h3>
-                    <h1 style="margin: 7px 0; color: #333; font-size: 36px;">{effective_ground_temp:.1f}℃</h1>
+                    <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{effective_ground_temp:.1f}℃</h1>
                     <p style="margin: 0; color: #666; font-size: 14px;">初期温度のまま</p>
                 </div>
                 """, unsafe_allow_html=True)
@@ -591,7 +591,7 @@ if page == "計算ツール":
             st.markdown(f"""
             <div style="border: 3px solid #4caf50; border-radius: 10px; padding: 13px; background-color: #f1f8e9; text-align: center;">
                 <h3 style="margin: 0; color: #4caf50; font-size: 18px;">⏱️ 通水時間</h3>
-                <h1 style="margin: 7px 0; color: #333; font-size: 36px;">{time_display}{time_unit}</h1>
+                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{time_display}{time_unit}</h1>
                 <p style="margin: 0; color: #666; font-size: 14px;">{time_description}</p>
             </div>
             """, unsafe_allow_html=True)
