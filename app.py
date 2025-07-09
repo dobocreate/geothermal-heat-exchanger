@@ -211,11 +211,15 @@ if page == "計算ツール":
             pipe_length = st.session_state.length_value
             
             # 掘削径の選択
+            if "boring_diameter" not in st.session_state:
+                st.session_state.boring_diameter = "φ250"
+            
             boring_diameter = st.selectbox(
                 "掘削径",
                 ["φ116", "φ250"],
-                index=1,  # デフォルトはφ250
-                help="配管用の掘削径で、配管後に地下水などで充満される範囲を示す"
+                index=["φ116", "φ250"].index(st.session_state.boring_diameter),
+                help="配管用の掘削径で、配管後に地下水などで充満される範囲を示す",
+                key="boring_diameter"
             )
             boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
     
@@ -224,14 +228,27 @@ if page == "計算ツール":
         
         with row2_col1:
             st.subheader("配管条件")
+            
+            # 配管材質の選択
+            if "pipe_material" not in st.session_state:
+                st.session_state.pipe_material = "鋼管"
+            
             pipe_material = st.selectbox(
                 "配管材質",
-                ["鋼管", "アルミ管", "銅管"]
+                ["鋼管", "アルミ管", "銅管"],
+                index=["鋼管", "アルミ管", "銅管"].index(st.session_state.pipe_material),
+                key="pipe_material"
             )
+            
+            # 管径の選択
+            if "pipe_diameter" not in st.session_state:
+                st.session_state.pipe_diameter = "32A"
+            
             pipe_diameter = st.selectbox(
                 "管径",
                 ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"],
-                index=3  # デフォルトは32A
+                index=["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"].index(st.session_state.pipe_diameter),
+                key="pipe_diameter"
             )
             
             # 管径別の推奨本数（参考値）
@@ -247,27 +264,51 @@ if page == "計算ツール":
             }
             
             # 配管セット本数の設定
+            # 管径が変更された場合のデフォルト値設定
+            if "num_pipes_user" not in st.session_state:
+                st.session_state.num_pipes_user = pipe_counts_default.get(pipe_diameter, 1)
+            
+            # 管径が変更された場合の処理
+            if "previous_pipe_diameter" not in st.session_state:
+                st.session_state.previous_pipe_diameter = pipe_diameter
+            
+            if st.session_state.previous_pipe_diameter != pipe_diameter:
+                # 管径が変更された場合、デフォルト値にリセット
+                st.session_state.num_pipes_user = pipe_counts_default.get(pipe_diameter, 1)
+                st.session_state.previous_pipe_diameter = pipe_diameter
+            
             num_pipes_user = st.selectbox(
                 "配管セット本数",
                 options=[1, 2, 3, 4, 5],
-                index=pipe_counts_default.get(pipe_diameter, 1) - 1,
-                help="U字管構造のため往路復路の2本で1セットとする"
+                index=[1, 2, 3, 4, 5].index(st.session_state.num_pipes_user),
+                help="U字管構造のため往路復路の2本で1セットとする",
+                key="num_pipes_user"
             )
         
         with row2_col2:
             st.subheader("詳細設定")
+            # チェックボックスのセッション状態管理
+            if "consider_groundwater_temp_rise" not in st.session_state:
+                st.session_state.consider_groundwater_temp_rise = False
+            
             consider_groundwater_temp_rise = st.checkbox(
                 "地下水温度上昇を考慮する",
-                value=False,
-                help="熱交換による地下水温度の上昇を自動計算します"
+                value=st.session_state.consider_groundwater_temp_rise,
+                help="熱交換による地下水温度の上昇を自動計算します",
+                key="consider_groundwater_temp_rise"
             )
             
             # 地下水循環の設定
             if consider_groundwater_temp_rise:
+                # 地下水循環のチェックボックス
+                if "consider_circulation" not in st.session_state:
+                    st.session_state.consider_circulation = False
+                
                 consider_circulation = st.checkbox(
                     "地下水の循環を考慮する",
-                    value=False,
-                    help="地下水が循環せず、指定時間運転した場合の温度上昇を計算"
+                    value=st.session_state.consider_circulation,
+                    help="地下水が循環せず、指定時間運転した場合の温度上昇を計算",
+                    key="consider_circulation"
                 )
                 
                 if consider_circulation:
