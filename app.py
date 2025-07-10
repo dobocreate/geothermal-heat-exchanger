@@ -908,6 +908,7 @@ if page == "計算ツール":
         pipe_thermal_cond = thermal_conductivity[pipe_material]
         h_outer = 300
         total_length = pipe_length * 2
+        boring_area = math.pi * (boring_diameter_mm / 2) ** 2  # mm²
         
         # 管径別比較データの計算
         pipe_comparison = []
@@ -973,25 +974,57 @@ if page == "計算ツール":
                 groundwater_volume_temp = boring_volume_temp - pipe_total_volume_temp  # m³
                 groundwater_mass_temp = groundwater_volume_temp * density  # kg
                 
-                # 運転時間での温度上昇
-                # 循環を考慮しない場合は1回の通水時間を計算
-                if not consider_circulation:
-                    total_pipe_length_temp = pipe_length * 2  # U字管往復
-                    transit_time_seconds_temp = total_pipe_length_temp / vel  # 秒
-                    operation_hours_temp = transit_time_seconds_temp / 3600  # 時間に変換
-                else:
-                    operation_hours_temp = operation_hours
+                # 循環方式に応じた計算
+                if consider_circulation and circulation_type == "同じ水を循環":
+                    # 同じ水を循環させる場合の計算（反復計算）
+                    time_step = 60  # 1分ごとの計算
+                    num_steps = int(operation_hours * 3600 / time_step)
                     
-                operation_time = operation_hours_temp * 3600  # 秒
-                if groundwater_mass_temp > 0:
-                    gw_temp_rise = (heat_rate_temp * operation_time) / (groundwater_mass_temp * specific_heat)
-                    gw_temp_rise = min(gw_temp_rise, temp_rise_limit)
+                    current_inlet_temp = initial_temp
+                    current_ground_temp = ground_temp
+                    
+                    for i in range(num_steps):
+                        # 現在の温度での熱交換計算
+                        current_effectiveness = 1 - math.exp(-NTU_temp)
+                        current_outlet_temp = current_inlet_temp - current_effectiveness * (current_inlet_temp - current_ground_temp)
+                        
+                        # 熱交換量
+                        current_heat_rate = mass_flow_per_p * n_pipes * specific_heat * (current_inlet_temp - current_outlet_temp)
+                        
+                        # 地下水温度上昇
+                        if groundwater_mass_temp > 0:
+                            delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass_temp * specific_heat)
+                            current_ground_temp += delta_ground_temp
+                            current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit)
+                        
+                        # 次のステップの入口温度は現在の出口温度
+                        current_inlet_temp = current_outlet_temp
+                    
+                    # 最終結果
+                    final_t = current_outlet_temp
+                    effective_ground_temp_local = current_ground_temp
+                    gw_temp_rise = current_ground_temp - ground_temp
+                    
                 else:
-                    gw_temp_rise = 0.0
-                
-                # 実効地下水温度で再計算
-                effective_ground_temp_local = ground_temp + gw_temp_rise
-                final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp_local)
+                    # 新しい水を連続供給する場合、または循環を考慮しない場合
+                    # 循環を考慮しない場合は1回の通水時間を計算
+                    if not consider_circulation:
+                        total_pipe_length_temp = pipe_length * 2  # U字管往復
+                        transit_time_seconds_temp = total_pipe_length_temp / vel  # 秒
+                        operation_hours_temp = transit_time_seconds_temp / 3600  # 時間に変換
+                    else:
+                        operation_hours_temp = operation_hours
+                        
+                    operation_time = operation_hours_temp * 3600  # 秒
+                    if groundwater_mass_temp > 0:
+                        gw_temp_rise = (heat_rate_temp * operation_time) / (groundwater_mass_temp * specific_heat)
+                        gw_temp_rise = min(gw_temp_rise, temp_rise_limit)
+                    else:
+                        gw_temp_rise = 0.0
+                    
+                    # 実効地下水温度で再計算
+                    effective_ground_temp_local = ground_temp + gw_temp_rise
+                    final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp_local)
             else:
                 gw_temp_rise = 0.0
             
