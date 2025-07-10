@@ -312,6 +312,19 @@ if page == "計算ツール":
                 )
                 
                 if consider_circulation:
+                    # 循環方式の選択
+                    if "circulation_type" not in st.session_state:
+                        st.session_state.circulation_type = "同じ水を循環"
+                    
+                    circulation_type = st.radio(
+                        "運転方式",
+                        ["同じ水を循環", "新しい水を連続供給"],
+                        index=["同じ水を循環", "新しい水を連続供給"].index(st.session_state.circulation_type) if st.session_state.circulation_type in ["同じ水を循環", "新しい水を連続供給"] else 0,
+                        help="同じ水を循環：冷却された水を再び配管に戻して使用\n新しい水を連続供給：常に新しい温水を供給し続ける",
+                        key="circulation_type",
+                        horizontal=True
+                    )
+                    
                     # 運転時間
                     op_col1, op_col2 = st.columns([3, 1])
                     
@@ -364,6 +377,7 @@ if page == "計算ツール":
                 operation_hours = 1  # デフォルト値（後で再計算される）
                 temp_rise_limit = 5  # デフォルト値
                 consider_circulation = False
+                circulation_type = None
     
     st.markdown("---")  # 計算条件と結果を区切る
 
@@ -525,7 +539,7 @@ if page == "計算ツール":
         
         # 地下水温度上昇の計算
         if consider_groundwater_temp_rise:
-            # 熱交換量の計算 [W]
+            # 初期熱交換量の計算 [W]
             heat_exchange_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (initial_temp - final_temp)
             
             # 地下水の体積計算（ボーリング孔内のみ）
@@ -544,28 +558,56 @@ if page == "計算ツール":
                 transit_time_seconds = total_pipe_length / velocity  # 秒
                 operation_hours = transit_time_seconds / 3600  # 時間に変換
             
-            # 地下水の温度上昇を計算
-            operation_time = operation_hours * 3600  # 秒
-            if groundwater_mass > 0:
-                groundwater_temp_rise = (heat_exchange_rate * operation_time) / (groundwater_mass * specific_heat)
+            # 循環方式に応じた計算
+            if consider_circulation and circulation_type == "同じ水を循環":
+                # 同じ水を循環させる場合の計算（反復計算）
+                time_step = 60  # 1分ごとの計算
+                num_steps = int(operation_hours * 3600 / time_step)
+                
+                current_inlet_temp = initial_temp
+                current_ground_temp = ground_temp
+                
+                for i in range(num_steps):
+                    # 現在の温度での熱交換計算
+                    current_effectiveness = 1 - math.exp(-NTU)
+                    current_outlet_temp = current_inlet_temp - current_effectiveness * (current_inlet_temp - current_ground_temp)
+                    
+                    # 熱交換量
+                    current_heat_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (current_inlet_temp - current_outlet_temp)
+                    
+                    # 地下水温度上昇
+                    if groundwater_mass > 0:
+                        delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass * specific_heat)
+                        current_ground_temp += delta_ground_temp
+                        current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit)
+                    
+                    # 次のステップの入口温度は現在の出口温度
+                    current_inlet_temp = current_outlet_temp
+                
+                # 最終結果
+                final_temp = current_outlet_temp
+                effective_ground_temp = current_ground_temp
+                groundwater_temp_rise = current_ground_temp - ground_temp
+                groundwater_temp_rise_unlimited = groundwater_temp_rise
+                
             else:
-                st.error("⚠️ 地下水体積が負またはゼロです。配管が多すぎるか、掘削径が小さすぎます。")
-                groundwater_temp_rise = 0.0
-            
-            # 温度上昇を制限
-            groundwater_temp_rise_unlimited = groundwater_temp_rise
-            groundwater_temp_rise = min(groundwater_temp_rise, temp_rise_limit)
-            
-            # 実効地下水温度を更新
-            effective_ground_temp = ground_temp + groundwater_temp_rise
-            
-            # 平均温度を再計算（物性値の更新が必要な場合）
-            avg_temp_new = (initial_temp + effective_ground_temp) / 2
-            
-            # 温度が大きく変わった場合は物性値を再計算する必要があるが、
-            # ここでは簡略化のため、最終温度のみ再計算
-            # 最終温度を再計算
-            final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
+                # 新しい水を連続供給する場合、または循環を考慮しない場合
+                operation_time = operation_hours * 3600  # 秒
+                if groundwater_mass > 0:
+                    groundwater_temp_rise = (heat_exchange_rate * operation_time) / (groundwater_mass * specific_heat)
+                else:
+                    st.error("⚠️ 地下水体積が負またはゼロです。配管が多すぎるか、掘削径が小さすぎます。")
+                    groundwater_temp_rise = 0.0
+                
+                # 温度上昇を制限
+                groundwater_temp_rise_unlimited = groundwater_temp_rise
+                groundwater_temp_rise = min(groundwater_temp_rise, temp_rise_limit)
+                
+                # 実効地下水温度を更新
+                effective_ground_temp = ground_temp + groundwater_temp_rise
+                
+                # 最終温度を再計算
+                final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
         else:
             groundwater_temp_rise = 0.0
         
