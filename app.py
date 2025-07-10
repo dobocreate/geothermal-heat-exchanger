@@ -595,6 +595,7 @@ if page == "計算ツール":
                 <p style="margin: 0; color: #666; font-size: 14px;">温度降下: {initial_temp - final_temp:.1f}℃</p>
             </div>
             """, unsafe_allow_html=True)
+            st.markdown("")  # モバイル表示時のスペース追加
         
         with main_col2:
             if consider_groundwater_temp_rise:
@@ -605,6 +606,7 @@ if page == "計算ツール":
                     <p style="margin: 0; color: #666; font-size: 14px;">温度上昇: +{groundwater_temp_rise:.1f}℃</p>
                 </div>
                 """, unsafe_allow_html=True)
+                st.markdown("")  # モバイル表示時のスペース追加
             else:
                 st.markdown(f"""
                 <div style="border: 3px solid #1976d2; border-radius: 10px; padding: 13px; background-color: #f0f7ff; text-align: center; margin-bottom: 15px;">
@@ -613,6 +615,7 @@ if page == "計算ツール":
                     <p style="margin: 0; color: #666; font-size: 14px;">初期温度のまま</p>
                 </div>
                 """, unsafe_allow_html=True)
+                st.markdown("")  # モバイル表示時のスペース追加
         
         with main_col3:
             # 通水時間の計算
