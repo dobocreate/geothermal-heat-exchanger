@@ -23,12 +23,18 @@ st.set_page_config(
 if "page" not in st.session_state:
     st.session_state.page = "計算ツール"
 
-# ボタンスタイルのカスタムCSS
+# ボタンスタイルとメトリックフォントサイズのカスタムCSS
 st.markdown("""
 <style>
     section[data-testid="stSidebar"] .stButton > button {
         width: 100%;
         margin-bottom: 0.5rem;
+    }
+    
+    /* st.metricのラベルフォントサイズを18pxに設定 */
+    div[data-testid="metric-container"] > label {
+        font-size: 18px !important;
+        font-weight: 600 !important;
     }
 </style>
 """, unsafe_allow_html=True)
