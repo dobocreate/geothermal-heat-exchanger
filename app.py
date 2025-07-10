@@ -682,53 +682,23 @@ if page == "計算ツール":
         sub_col1, sub_col2, sub_col3, sub_col4 = st.columns(4)
         
         with sub_col1:
-            st.markdown(f"""
-            <div style="border: 3px solid #9c27b0; border-radius: 10px; padding: 13px; background-color: #f3e5f5; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #9c27b0; font-size: 18px;">⚡ 熱交換効率</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{efficiency:.1f}%</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">水から地下水への熱移動割合</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric("熱交換効率", f"{efficiency:.1f}%", help="水から地下水への熱の移動割合。100%に近いほど効率的")
         
         with sub_col2:
             if consider_groundwater_temp_rise:
-                heat_display = f"{heat_exchange_rate/1000:.1f} kW"
+                st.metric("熱交換量", f"{heat_exchange_rate/1000:.1f} kW", help="地下に捨てられる熱量。エアコン1台は約2-3kW")
             else:
                 heat_exchange_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (initial_temp - final_temp)
-                heat_display = f"{heat_exchange_rate/1000:.1f} kW"
-            
-            st.markdown(f"""
-            <div style="border: 3px solid #ff9800; border-radius: 10px; padding: 13px; background-color: #fff8e1; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #ff9800; font-size: 18px;">🔥 熱交換量</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{heat_display}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">地下に捨てられる熱量</p>
-            </div>
-            """, unsafe_allow_html=True)
+                st.metric("熱交換量", f"{heat_exchange_rate/1000:.1f} kW", help="地下に捨てられる熱量。エアコン1台は約2-3kW")
         
         with sub_col3:
             if consider_groundwater_temp_rise:
-                volume_display = f"{groundwater_volume:.3f} m³"
-                volume_desc = "ボーリング孔内の地下水量"
+                st.metric("地下水体積", f"{groundwater_volume:.3f} m³", help="ボーリング孔内の地下水量。配管を除いた有効体積")
             else:
-                volume_display = "-"
-                volume_desc = "温度上昇計算時のみ表示"
-            
-            st.markdown(f"""
-            <div style="border: 3px solid #2196f3; border-radius: 10px; padding: 13px; background-color: #e3f2fd; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #2196f3; font-size: 18px;">💧 地下水体積</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{volume_display}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">{volume_desc}</p>
-            </div>
-            """, unsafe_allow_html=True)
+                st.metric("地下水体積", "-", help="温度上昇計算時のみ表示")
         
         with sub_col4:
-            st.markdown(f"""
-            <div style="border: 3px solid #4caf50; border-radius: 10px; padding: 13px; background-color: #e8f5e8; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #4caf50; font-size: 18px;">🔧 配管本数</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{num_pipes}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">セット</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric("配管本数", f"{num_pipes} セット")
         
         # 結果表示終了
         
@@ -790,34 +760,12 @@ if page == "計算ツール":
             st.markdown("---")
             st.subheader("🌊 地下水温度上昇の詳細")
             gw_col1, gw_col2, gw_col3, gw_col4 = st.columns(4)
-            
             with gw_col1:
-                st.markdown(f"""
-                <div style="border: 3px solid #607d8b; border-radius: 10px; padding: 13px; background-color: #eceff1; text-align: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; color: #607d8b; font-size: 18px;">🕳️ 掘削孔体積</h3>
-                    <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{boring_volume:.3f}</h1>
-                    <p style="margin: 0; color: #666; font-size: 14px;">m³</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
+                st.metric("掘削孔体積", f"{boring_volume:.3f} m³")
             with gw_col2:
-                st.markdown(f"""
-                <div style="border: 3px solid #795548; border-radius: 10px; padding: 13px; background-color: #efebe9; text-align: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; color: #795548; font-size: 18px;">⚙️ 配管総体積</h3>
-                    <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{pipe_total_volume:.3f}</h1>
-                    <p style="margin: 0; color: #666; font-size: 14px;">m³</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
+                st.metric("配管総体積", f"{pipe_total_volume:.3f} m³")
             with gw_col3:
-                st.markdown(f"""
-                <div style="border: 3px solid #3f51b5; border-radius: 10px; padding: 13px; background-color: #e8eaf6; text-align: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; color: #3f51b5; font-size: 18px;">💦 地下水質量</h3>
-                    <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{groundwater_mass:.0f}</h1>
-                    <p style="margin: 0; color: #666; font-size: 14px;">kg</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
+                st.metric("地下水質量", f"{groundwater_mass:.0f} kg")
             with gw_col4:
                 if consider_circulation:
                     time_label = f"{operation_minutes}分運転"
@@ -825,17 +773,9 @@ if page == "計算ツール":
                     time_label = f"1回通水（{operation_hours*60:.1f}分）"
                     
                 if groundwater_temp_rise_unlimited > temp_rise_limit:
-                    temp_desc = f"制限前: {groundwater_temp_rise_unlimited:.2f}℃"
+                    st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃", f"制限前: {groundwater_temp_rise_unlimited:.2f}℃")
                 else:
-                    temp_desc = time_label
-                
-                st.markdown(f"""
-                <div style="border: 3px solid #e91e63; border-radius: 10px; padding: 13px; background-color: #fce4ec; text-align: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; color: #e91e63; font-size: 18px;">🌡️ 温度上昇</h3>
-                    <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{groundwater_temp_rise:.2f}℃</h1>
-                    <p style="margin: 0; color: #666; font-size: 14px;">{temp_desc}</p>
-                </div>
-                """, unsafe_allow_html=True)
+                    st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃")
         
         # 追加の計算結果表示
         st.markdown("---")
@@ -843,40 +783,16 @@ if page == "計算ツール":
         detail_col1, detail_col2, detail_col3, detail_col4 = st.columns(4)
         
         with detail_col1:
-            st.markdown(f"""
-            <div style="border: 3px solid #00bcd4; border-radius: 10px; padding: 13px; background-color: #e0f2f1; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #00bcd4; font-size: 18px;">🌊 流速</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{velocity:.3f}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">m/s（適正: 0.5-2.0）</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric("流速", f"{velocity:.3f} m/s", help="配管内の水の流れる速度。0.5-2.0m/sが適正範囲")
         
         with detail_col2:
-            st.markdown(f"""
-            <div style="border: 3px solid #673ab7; border-radius: 10px; padding: 13px; background-color: #ede7f6; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #673ab7; font-size: 18px;">🔄 レイノルズ数</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{reynolds:.0f}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">{"乱流（効率的）" if reynolds >= 2300 else "層流（穏やか）"}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric("レイノルズ数", f"{reynolds:.0f}", help="流れの状態を示す数値。2300以下は層流（おとなしい流れ）、以上は乱流（かき混ぜ効果あり）")
         
         with detail_col3:
-            st.markdown(f"""
-            <div style="border: 3px solid #ff5722; border-radius: 10px; padding: 13px; background-color: #fbe9e7; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #ff5722; font-size: 18px;">🔥 熱伝達係数</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{heat_transfer_coefficient:.0f}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">W/m²·K</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric("熱伝達係数", f"{heat_transfer_coefficient:.0f} W/m²·K", help="配管内面での熱の移動しやすさ。数値が大きいほど熱交換が活発")
         
         with detail_col4:
-            st.markdown(f"""
-            <div style="border: 3px solid #009688; border-radius: 10px; padding: 13px; background-color: #e0f2f1; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #009688; font-size: 18px;">⚡ NTU</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{NTU:.3f}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">{"高効率" if NTU >= 0.3 else "要改善"}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric("NTU", f"{NTU:.3f}", help="熱交換の能力を示す無次元数。0.3以上で効率的な熱交換が期待できる")
         
         # 物性値の表示
         st.markdown("---")
@@ -884,40 +800,16 @@ if page == "計算ツール":
         prop_col1, prop_col2, prop_col3, prop_col4 = st.columns(4)
         
         with prop_col1:
-            st.markdown(f"""
-            <div style="border: 3px solid #8bc34a; border-radius: 10px; padding: 13px; background-color: #f1f8e9; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #8bc34a; font-size: 18px;">💧 動粘度</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{kinematic_viscosity*1e6:.3f}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">×10⁻⁶ m²/s</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric("動粘度", f"{kinematic_viscosity*1e6:.3f}×10⁻⁶ m²/s", help="水の粘っこさ。温度が高いほど小さくなり流れやすくなる")
         
         with prop_col2:
-            st.markdown(f"""
-            <div style="border: 3px solid #ff6f00; border-radius: 10px; padding: 13px; background-color: #fff3e0; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #ff6f00; font-size: 18px;">🌡️ 熱伝導率</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{water_thermal_conductivity:.3f}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">W/m·K</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric("熱伝導率", f"{water_thermal_conductivity:.3f} W/m·K", help="水の熱の伝わりやすさ。温度によって微妙に変化する")
         
         with prop_col3:
-            st.markdown(f"""
-            <div style="border: 3px solid #9c27b0; border-radius: 10px; padding: 13px; background-color: #f3e5f5; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #9c27b0; font-size: 18px;">🔥 プラントル数</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{prandtl:.2f}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">水の熱的性質</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric("プラントル数", f"{prandtl:.2f}", help="水の熱的性質を表す数値。水は約6-7で、熱移動計算に使用")
         
         with prop_col4:
-            st.markdown(f"""
-            <div style="border: 3px solid #795548; border-radius: 10px; padding: 13px; background-color: #efebe9; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #795548; font-size: 18px;">⚙️ 総括熱伝達係数</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{U:.1f}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">W/m²·K</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric("総括熱伝達係数", f"{U:.1f} W/m²·K")
 
     
     with tab2:
