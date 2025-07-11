@@ -1591,19 +1591,22 @@ elif page == "理論解説":
     
     with col2:
         st.markdown("**ナビエ・ストークス方程式**")
-        st.latex(r"\rho \frac{D\vec{v}}{Dt} = -\nabla p + \mu \nabla^2 \vec{v} + \rho \vec{g}")
+        st.latex(r"\rho \left(\frac{\partial \vec{v}}{\partial t} + (\vec{v} \cdot \nabla)\vec{v}\right) = -\nabla p + \mu \nabla^2 \vec{v} + \rho \vec{g}")
         st.markdown("""
-        慣性力、圧力、粘性力、体積力の釣り合い
+        慣性力（非定常項＋対流項）、圧力、粘性力、体積力の釣り合い
         
         **記号の説明：**
         - **ρ**: 密度 [kg/m³]
-        - **D/Dt**: 実質微分（物質微分） [1/s]
+        - **∂v⃗/∂t**: 局所的時間変化（非定常項） [m/s²]
+        - **(v⃗·∇)v⃗**: 対流項（移流項） [m/s²]
         - **v⃗**: 速度ベクトル [m/s]
         - **p**: 圧力 [Pa = N/m²]
         - **∇p**: 圧力勾配 [Pa/m]
         - **μ**: 動粘性係数 [Pa·s = kg/m·s]
         - **∇²**: ラプラシアン演算子 [1/m²]
         - **g⃗**: 重力加速度ベクトル [m/s²]
+        
+        ※実質微分 D/Dt = ∂/∂t + (v⃗·∇) を展開表示
         """)
     
     st.subheader("2. 無次元数による流れの特性化")
