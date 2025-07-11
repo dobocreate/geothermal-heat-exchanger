@@ -1,5 +1,5 @@
 """
-地中熱交換システム計算ツール
+地中熱交換簡易シミュレーター
 Streamlitアプリケーション
 """
 
@@ -11,7 +11,7 @@ import math
 
 # ページ設定
 st.set_page_config(
-    page_title="地中熱交換システム計算ツール",
+    page_title="地中熱交換簡易シミュレーター",
     page_icon="🌡️",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -32,6 +32,17 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# ページ遷移時の処理
+if "previous_page" not in st.session_state:
+    st.session_state.previous_page = st.session_state.page
+    st.session_state.page_changed = False
+
+if st.session_state.previous_page != st.session_state.page:
+    st.session_state.previous_page = st.session_state.page
+    st.session_state.page_changed = True
+else:
+    st.session_state.page_changed = False
 
 # ボタンをコンテナに配置
 button_col1 = st.sidebar.container()
@@ -63,6 +74,10 @@ with button_col3:
 page = st.session_state.page
 
 if page == "計算ツール":
+    # ページ遷移時のスクロールリセット用
+    if st.session_state.page_changed:
+        st.empty()
+    
     # タイトル
     st.markdown("<h1 style='text-align: center;'>🌡️ 地中熱交換簡易シミュレーター</h1>", unsafe_allow_html=True)
     st.markdown("""
@@ -1102,291 +1117,296 @@ if page == "計算ツール":
         st.markdown("**開発者**: dobocreate | **バージョン**: 1.2.0 | **更新**: 2025-01-06")
 
 elif page == "理論解説":
-    st.title("📚 地中熱交換簡易シミュレーターの理論解説")
-    st.markdown("地中熱交換システムの原理と、このツールで使用している計算理論について解説します")
+    # ページ遷移時のスクロールリセット用
+    if st.session_state.page_changed:
+        st.empty()
     
-    # システム概念の説明
-    st.header("🌍 地中熱交換システムとは")
+    st.title("📚 地中熱交換の理論解説")
+    st.markdown("本シミュレーターで適用している熱交換理論の詳細な解説")
     
-    col1, col2 = st.columns([2, 1])
+    # 熱移動の基礎理論
+    st.header("🔬 熱移動の基礎理論")
+    
+    st.subheader("1. 熱移動の3つの形態")
+    col1, col2, col3 = st.columns(3)
+    
     with col1:
+        st.markdown("**熱伝導（Conduction）**")
+        st.latex(r"q = -k \nabla T")
         st.markdown("""
-        ### 基本原理
-        地中熱交換システムは、**地下の安定した温度環境**を利用した省エネルギー技術です：
-        
-        **🌡️ 地下温度の特徴**
-        - 地下10m以深では年間を通じてほぼ一定温度（15-18℃）
-        - 夏の暑い時期でも地下は涼しい
-        - 冬の寒い時期でも地下は温かい
-        
-        **❄️ 冷房運転での活用（本ツールの対象）**
-        - エアコンの排熱（30-35℃）を地下水（15-18℃）で冷却
-        - 冷却塔が不要となり、省スペース・省エネ
-        - 騒音の軽減効果
+        物質内部の分子振動による熱移動
+        - 固体内部の熱移動が主
+        - 配管壁での熱抵抗
         """)
     
     with col2:
-        st.info("""
-        **💡 実用例**
-        
-        **オフィスビル**
-        - 屋上冷却塔の代替
-        - 景観への配慮
-        
-        **工場**
-        - プロセス冷却水の処理
-        - 水使用量の削減
-        
-        **データセンター**
-        - 高発熱機器の冷却
-        - 安定した冷却性能
-        """)
-    
-    st.markdown("---")
-    
-    # U字管構造の説明
-    st.header("🔧 U字管構造の利点")
-    
-    u_col1, u_col2 = st.columns([1, 1])
-    with u_col1:
+        st.markdown("**対流（Convection）**")
+        st.latex(r"q = h(T_s - T_\infty)")
         st.markdown("""
-        ### なぜU字管なのか？
-        
-        **施工面での利点**
-        - 1回のボーリングで往復配管を設置
-        - 掘削コストの削減
-        - 狭い敷地でも設置可能
-        
-        **維持管理面での利点**
-        - 地上に出入口が集約
-        - メンテナンスが容易
-        - 漏水リスクの低減
+        流体の移動を伴う熱移動
+        - 管内流れでの主要な熱移動
+        - 強制対流と自然対流
         """)
     
-    with u_col2:
+    with col3:
+        st.markdown("**放射（Radiation）**")
+        st.latex(r"q = \epsilon \sigma (T_1^4 - T_2^4)")
         st.markdown("""
-        ### 熱交換効率の向上
-        
-        **往路での予備冷却**
-        - 入口→底部：徐々に温度降下
-        
-        **復路での本格冷却**
-        - 底部→出口：さらなる温度降下
-        
-        **結果**
-        - 1本の直管より高い冷却効果
-        - 滞留時間の確保
+        電磁波による熱移動
+        - 本計算では無視
+        - 低温域では影響小
         """)
     
-    st.markdown("---")
-    
-    # 設計時の考慮事項
-    st.header("📐 設計時の重要ポイント")
-    
-    design_col1, design_col2, design_col3 = st.columns(3)
-    
-    with design_col1:
-        st.markdown("""
-        **🔍 管径選定**
-        
-        **32A（内径33.5mm）推奨の理由**
-        - 適切な流速（1-2m/s）
-        - 効率的な熱交換
-        - 施工の容易さ
-        - コストバランス
-        """)
-    
-    with design_col2:
-        st.markdown("""
-        **📏 深度・流量設計**
-        
-        **深度の決定要因**
-        - 地下水位
-        - 土質条件
-        - 必要な熱交換量
-        
-        **流量の最適化**
-        - 熱交換効率とのバランス
-        - ポンプ動力の考慮
-        """)
-    
-    with design_col3:
-        st.markdown("""
-        **🌊 地下水への影響**
-        
-        **温度上昇の制限**
-        - 環境保護の観点
-        - 長期安定運転
-        
-        **影響範囲の予測**
-        - 地下水流動の考慮
-        - 熱拡散の評価
-        """)
-    
-    st.markdown("---")
-    
-    # 計算理論の説明（簡略化）
-    st.header("🧮 計算理論の基礎")
+    st.subheader("2. エネルギー保存則（熱力学第一法則）")
     st.markdown("""
-    このツールでは、以下の理論に基づいて熱交換計算を行っています。
-    土木エンジニアの皆様には数式の詳細よりも、**何を表しているか**を理解していただければ十分です。
+    系に出入りする熱量と仕事の総和は、系の内部エネルギー変化に等しい
+    """)
+    st.latex(r"dE_{system}/dt = \dot{Q}_{in} - \dot{Q}_{out} + \dot{W}")
+    
+    st.markdown("""
+    **定常流動系のエネルギー方程式：**
+    """)
+    st.latex(r"\dot{m}(h_{out} - h_{in}) = \dot{Q} - \dot{W}")
+    
+    st.markdown("""
+    配管内流れでは仕事項がゼロ、エンタルピー変化を温度変化で表すと：
+    """)
+    st.latex(r"\dot{Q} = \dot{m} c_p (T_{out} - T_{in})")
+    
+    st.markdown("---")
+    
+    # 管内流れの流体力学
+    st.header("💧 管内流れの流体力学理論")
+    
+    st.subheader("1. 連続の式と運動量保存")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**連続の式（質量保存）**")
+        st.latex(r"\frac{\partial \rho}{\partial t} + \nabla \cdot (\rho \vec{v}) = 0")
+        st.markdown("""
+        非圧縮性定常流では：
+        """)
+        st.latex(r"v_1 A_1 = v_2 A_2")
+    
+    with col2:
+        st.markdown("**ナビエ・ストークス方程式**")
+        st.latex(r"\rho \frac{D\vec{v}}{Dt} = -\nabla p + \mu \nabla^2 \vec{v} + \rho \vec{g}")
+        st.markdown("""
+        慣性力、圧力、粘性力、体積力の釣り合い
+        """)
+    
+    st.subheader("2. 無次元数による流れの特性化")
+    
+    st.markdown("**レイノルズ数の導出**")
+    st.markdown("""
+    ナビエ・ストークス方程式を無次元化すると、慣性力と粘性力の比として現れる：
+    """)
+    st.latex(r"Re = \frac{\text{慣性力}}{\text{粘性力}} = \frac{\rho v L}{\mu} = \frac{v L}{\nu}")
+    
+    st.markdown("""
+    **臨界レイノルズ数（Re = 2300）の意味：**
+    - 層流から乱流への遷移点
+    - 実験的に決定された普遍的な値
+    - 管径や流体によらず一定
     """)
     
-    # 主要パラメータの説明
-    theory_col1, theory_col2 = st.columns(2)
+    st.markdown("---")
     
-    with theory_col1:
-        st.subheader("📊 流れの状態（レイノルズ数）")
+    # 管内流れの熱伝達
+    st.header("🌊 管内流れの熱伝達理論")
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.subheader("1. レイノルズ数と流動状態")
         st.markdown("""
-        **何を表すか**: 配管内の水の流れ方
-        
-        - **2300未満**: おとなしい流れ（層流）
-        - **2300以上**: かき混ぜ効果のある流れ（乱流）
-        
-        **設計への影響**
-        - 乱流の方が熱交換効率が良い
-        - 流速を上げると乱流になりやすい
-        - ただし、ポンプ動力も増加
+        管内流れの状態は**レイノルズ数**により判定されます。
         """)
-        
-        st.subheader("🌡️ 熱の移りやすさ（熱伝達係数）")
+        st.latex(r"Re = \frac{\rho v D}{\mu} = \frac{vD}{\nu}")
         st.markdown("""
-        **何を表すか**: 配管壁面での熱の移動効率
+        **物理的意味：**
+        - 慣性力と粘性力の比を表す無次元数
+        - Re < 2300: 層流（規則的な流れ）
+        - Re > 2300: 乱流（不規則な流れ）
         
-        **影響要因**
-        - 流れの状態（乱流ほど良い）
-        - 配管材質（銅>アルミ>鋼）
-        - 管径（細いほど効率的だが流量制限）
-        
-        **設計指針**
-        - 値が大きいほど効率的
-        - 1000-5000 W/m²·K が一般的
+        **理論的背景：**
+        オズボーン・レイノルズの実験（1883年）により、
+        流れの遷移が無次元数で整理できることが発見されました。
         """)
     
-    with theory_col2:
-        st.subheader("⚡ 熱交換能力（NTU）")
+    with col2:
+        st.subheader("2. ヌセルト数と熱伝達")
         st.markdown("""
-        **何を表すか**: システム全体の熱交換能力
-        
-        **NTU値の目安**
-        - **0.1以下**: 効率悪い
-        - **0.3-0.5**: 実用的
-        - **1.0以上**: 高効率（コスト増）
-        
-        **向上方法**
-        - 配管を長くする
-        - 管径を細くする（流量制限あり）
-        - 複数本並列設置
+        熱伝達の強さは**ヌセルト数**で表されます。
         """)
-        
-        st.subheader("💧 最終的な冷却効果")
+        st.latex(r"Nu = \frac{hD}{k}")
         st.markdown("""
-        **計算の流れ**
-        1. 流れの状態を判定
-        2. 熱の移りやすさを計算
-        3. システム能力（NTU）を算出
-        4. 実際の温度降下を予測
+        **物理的意味：**
+        - 対流熱伝達と熱伝導の比
+        - 大きいほど対流による熱移動が活発
         
-        **結果の見方**
-        - 温度降下が大きいほど効果的
-        - ただし、地下水温度上昇も考慮
+        **層流の理論解（グレーツ解）：**
+        - 十分発達した層流: Nu = 3.66
+        
+        **乱流の実験相関式（Dittus-Boelter式）：**
+        """)
+        st.latex(r"Nu = 0.023 \cdot Re^{0.8} \cdot Pr^{n}")
+        st.markdown("冷却時: n = 0.3, 加熱時: n = 0.4")
+    
+    st.markdown("---")
+    
+    # 熱交換器の設計理論
+    st.header("🔄 熱交換器の設計理論")
+    
+    st.subheader("対数平均温度差（LMTD）法")
+    st.markdown("""
+    熱交換器の基本設計式は以下で表されます：
+    """)
+    st.latex(r"Q = UA \cdot LMTD")
+    st.markdown("""
+    しかし、対向流や並流の場合のLMTD計算は複雑なため、
+    本ツールではより汎用的な**NTU-ε法**を採用しています。
+    """)
+    
+    st.subheader("NTU-ε法（有効度-伝熱単位数法）")
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.markdown("""
+        **伝熱単位数（NTU）の定義：**
+        """)
+        st.latex(r"NTU = \frac{UA}{C_{min}}")
+        st.markdown("""
+        - **U**: 総括熱伝達係数 [W/m²·K]
+        - **A**: 伝熱面積 [m²]
+        - **Cmin**: 最小熱容量流量 [W/K]
+        
+        **物理的意味：**
+        - 熱交換器のサイズと能力の指標
+        - 無次元化された熱交換能力
+        """)
+    
+    with col2:
+        st.markdown("""
+        **有効度（ε）の定義：**
+        """)
+        st.latex(r"\varepsilon = \frac{Q_{actual}}{Q_{max}}")
+        st.markdown("""
+        - **Qactual**: 実際の熱交換量
+        - **Qmax**: 理論上の最大熱交換量
+        
+        **対向流型の理論解：**
+        """)
+        st.latex(r"\varepsilon = 1 - e^{-NTU}")
+        st.markdown("（熱容量比Cr = 0の場合）")
+    
+    st.markdown("---")
+    
+    # 総括熱伝達係数
+    st.header("🔧 総括熱伝達係数の理論")
+    st.markdown("""
+    配管壁を通しての熱移動は、複数の熱抵抗の組み合わせとして扱います。
+    """)
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.subheader("熱抵抗の直列モデル")
+        st.latex(r"\frac{1}{UA} = \frac{1}{h_i A_i} + \frac{\ln(r_o/r_i)}{2\pi L k} + \frac{1}{h_o A_o}")
+        st.markdown("""
+        **各項の意味：**
+        - 第1項: 管内側の対流熱抵抗
+        - 第2項: 管壁の伝導熱抵抗
+        - 第3項: 管外側の対流熱抵抗
+        """)
+    
+    with col2:
+        st.subheader("内径基準の総括熱伝達係数")
+        st.latex(r"U_i = \frac{1}{\frac{1}{h_i} + \frac{r_i \ln(r_o/r_i)}{k_{pipe}} + \frac{r_i}{r_o h_o}}")
+        st.markdown("""
+        **設計上の考慮：**
+        - 通常、管内側の熱抵抗が支配的
+        - 管材の熱伝導率の影響は比較的小さい
+        - 汚れ係数は本ツールでは考慮していない
         """)
     
     st.markdown("---")
     
-    # 実務的な設計指針
-    st.header("📋 実務的な設計指針")
+    # 温度依存物性値
+    st.header("🌡️ 温度依存物性値の扱い")
+    st.markdown("""
+    水の物性値は温度により変化します。本ツールでは、平均温度での物性値を使用しています。
+    """)
     
-    guidance_col1, guidance_col2 = st.columns(2)
+    col1, col2 = st.columns([1, 1])
     
-    with guidance_col1:
+    with col1:
+        st.subheader("プラントル数")
+        st.latex(r"Pr = \frac{c_p \mu}{k} = \frac{\nu}{\alpha}")
         st.markdown("""
-        ### 🎯 設計目標値
-        
-        **温度条件**
-        - 入口温度: 30-35℃（エアコン排熱）
-        - 目標出口温度: 20-25℃
-        - 地下水温度: 15-18℃（地域により変動）
-        
-        **流体条件**
-        - 流速: 0.5-2.0 m/s（適正範囲）
-        - 流量: 10-100 L/min（設備規模による）
-        
-        **効率指標**
-        - 熱交換効率: 30-70%
-        - NTU: 0.3-1.0
+        **物理的意味：**
+        - 運動量拡散と熱拡散の比
+        - 水の場合: Pr ≈ 7（20℃）
+        - 速度境界層と温度境界層の関係を示す
         """)
     
-    with guidance_col2:
+    with col2:
+        st.subheader("物性値の温度依存性")
         st.markdown("""
-        ### ⚠️ 制約条件
+        **主な変化：**
+        - 動粘度: 温度上昇で減少
+        - 熱伝導率: わずかに増加
+        - プラントル数: 温度上昇で減少
         
-        **環境制約**
-        - 地下水温度上昇: 5℃以下
-        - 地下水利用許可の範囲内
-        
-        **施工制約**
-        - 掘削径: 100-200mm（一般的）
-        - 掘削深度: 地下水位+10m以上
-        - 配管占有率: 掘削面積の80%以下
-        
-        **経済性**
-        - 初期コスト vs 運転コスト
-        - 冷却塔との比較検討
+        **計算への影響：**
+        - レイノルズ数の変化
+        - ヌセルト数の変化
+        - 最終的な熱伝達係数への影響
         """)
     
     st.markdown("---")
     
-    st.header("🔧 よくある設計質問と回答")
+    # 地下水温度上昇の理論
+    st.header("♨️ 地下水温度上昇の理論")
+    st.markdown("""
+    熱交換により地下水の温度が上昇する場合の計算方法について説明します。
+    """)
     
-    with st.expander("Q1: なぜ32Aが推奨されるのですか？"):
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.subheader("エネルギー保存則の適用")
         st.markdown("""
-        **A1**: 以下のバランスが最も良いためです
-        - 適度な流速（1-2m/s）で効率的な熱交換
-        - 実用的な流量（10-50L/min）に対応
-        - 施工コストと性能のバランス
-        - 一般的な配管規格で入手しやすい
+        ボーリング孔内の地下水に対するエネルギー収支：
+        """)
+        st.latex(r"m_{gw} c_p \frac{dT_{gw}}{dt} = Q")
+        st.markdown("""
+        **積分すると：**
+        """)
+        st.latex(r"\Delta T_{gw} = \frac{Q \cdot t}{m_{gw} c_p}")
+        st.markdown("""
+        - **mgw**: 地下水質量 [kg]
+        - **Q**: 熱交換量 [W]
+        - **t**: 運転時間 [s]
         """)
     
-    with st.expander("Q2: 管長はどのように決めればよいですか？"):
+    with col2:
+        st.subheader("循環運転時の反復計算")
         st.markdown("""
-        **A2**: 以下の要因を総合的に判断します
-        - **必要な冷却量**: 大きいほど長い管長が必要
-        - **地質条件**: 掘削可能深度の制限
-        - **地下水位**: 地下水位以下での設置が必要
-        - **経済性**: 深いほど掘削コストが増加
+        同じ水を循環させる場合：
         
-        **目安**: 10-20mが一般的、効果不足なら複数本並列
-        """)
-    
-    with st.expander("Q3: 地下水温度上昇が制限を超えた場合は？"):
-        st.markdown("""
-        **A3**: 以下の対策を検討してください
-        1. **配管本数を増やす**: 1本あたりの負荷を分散
-        2. **流量を増やす**: 滞留時間を短縮
-        3. **運転時間を短縮**: 連続運転を避ける
-        4. **複数孔に分散**: 熱的影響を分散
-        5. **地下水流動の活用**: 自然循環による熱拡散
-        """)
-    
-    with st.expander("Q4: このツールの計算精度はどの程度ですか？"):
-        st.markdown("""
-        **A4**: 簡易計算ツールとしての精度
-        - **誤差範囲**: ±20-30%程度
-        - **適用範囲**: 一般的な地中熱交換システム
-        - **前提条件**: 定常状態、均一地質、静止地下水
+        1. **初期状態**: 入口温度 = 設定値
+        2. **熱交換**: 出口温度を計算
+        3. **地下水温度上昇**: ΔT計算
+        4. **次サイクル**: 出口温度が新たな入口温度
         
-        **詳細設計時の注意**
-        - 地質調査結果の反映
-        - 地下水流動の考慮
-        - 長期性能の評価
-        - 安全率の設定（1.5-2.0倍程度）
+        この過程を時間ステップごとに繰り返し、
+        系が平衡状態に達するまで計算します。
         """)
     
-    st.markdown("---")
-    
-    # 技術的詳細（従来の数式部分を簡略化して残す）
-    with st.expander("🔬 技術的詳細（熱工学の専門知識がある方向け）"):
+    # 計算式のまとめ
+    with st.expander("📊 本ツールで使用している計算式のまとめ"):
         st.markdown("### 主要な計算式と記号の説明")
         
         st.markdown("**1. レイノルズ数（流れの状態を表す無次元数）**")
@@ -1454,13 +1474,52 @@ elif page == "理論解説":
         """)
         
         st.info("""
-        **補足説明**
-        - 無次元数（[-]）は単位を持たない数値
-        - これらの式は熱交換器設計の標準的な理論
-        - エネルギー保存則と実験的相関に基づいている
+        **理論的背景**
+        - 熱交換器設計の標準的な理論体系（Incropera, DeWitt等）
+        - 管内流れの熱伝達相関式（Dittus-Boelter, 1930）
+        - NTU-ε法（Kays and London, 1964）
+        - 無次元数による整理（相似則の適用）
         """)
     
-    st.header("10. 計算の前提条件")
+    st.markdown("---")
+    
+    # 理論の限界と適用範囲
+    st.header("⚠️ 理論の限界と適用範囲")
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.subheader("本理論の前提条件")
+        st.markdown("""
+        **流体力学的前提：**
+        - 定常流れ
+        - 十分発達した流れ
+        - 非圧縮性流体
+        - 一様な断面
+        
+        **熱的前提：**
+        - 定常伝熱
+        - 一定物性値（平均温度で評価）
+        - 軸方向熱伝導は無視
+        - 放射伝熱は無視
+        """)
+    
+    with col2:
+        st.subheader("適用範囲")
+        st.markdown("""
+        **レイノルズ数：**
+        - 層流: Re < 2300
+        - 乱流: 2300 < Re < 10⁵
+        
+        **プラントル数：**
+        - 0.6 < Pr < 160（Dittus-Boelter式）
+        
+        **幾何学的制限：**
+        - L/D > 60（十分発達した流れ）
+        - 円管（非円形断面は別途補正要）
+        """)
+    
+    st.header("🔍 本ツールにおける計算の前提条件")
     st.markdown("""
     ### 基本的な前提条件
     1. **U字管構造**：往路と復路の総延長で計算（管浸水距離 × 2）
@@ -1508,6 +1567,10 @@ elif page == "理論解説":
     st.markdown("**開発者**: dobocreate | **バージョン**: 1.2.0 | **更新**: 2025-01-06")
 
 elif page == "物性値":
+    # ページ遷移時のスクロールリセット用
+    if st.session_state.page_changed:
+        st.empty()
+    
     st.title("📊 物性値")
     st.markdown("地中熱交換システムの計算に使用する物性値です")
     
