@@ -1691,6 +1691,228 @@ elif page == "理論解説":
     4. 温度上昇は設定した上限値（5〜20℃）で制限
     """)
     
+    st.markdown("---")
+    
+    # 計算フローチャート
+    st.header("🔄 本ツールの計算フローと適用理論")
+    st.markdown("""
+    以下に、実際の計算過程と各ステップで使用される理論式を詳細に示します。
+    """)
+    
+    # ステップ1
+    with st.expander("📌 ステップ1: 入力データの処理と物性値の決定"):
+        st.markdown("""
+        ### 1-1. 平均温度の計算
+        """)
+        st.latex(r"T_{avg} = \frac{T_{initial} + T_{ground}}{2}")
+        st.markdown("""
+        - 入口温度と地下水温度の平均を計算
+        - この温度で水の物性値を決定
+        
+        ### 1-2. 物性値の決定（線形補間）
+        温度範囲に応じて以下の物性値を設定：
+        - **動粘度** ν [m²/s]
+        - **熱伝導率** k [W/m·K]
+        - **プラントル数** Pr [-]
+        - **密度** ρ [kg/m³]
+        - **比熱** cp [J/kg·K]
+        
+        ### 1-3. 流量計算
+        """)
+        st.latex(r"\dot{m} = \rho \cdot Q_{volume}")
+        st.markdown("""
+        - Qvolume: 体積流量 [m³/s] = (流量[L/min] / 60000)
+        - ρ: 平均温度での密度 [kg/m³]
+        """)
+    
+    # ステップ2
+    with st.expander("📌 ステップ2: 管内流動状態の判定"):
+        st.markdown("""
+        ### 2-1. 流速の計算
+        """)
+        st.latex(r"v = \frac{Q_{volume}}{A} = \frac{Q_{volume}}{\pi (D/2)^2}")
+        st.markdown("""
+        - Qvolume: 1本あたりの体積流量 [m³/s]
+        - D: 配管内径 [m]
+        - A: 配管断面積 [m²]
+        
+        ### 2-2. レイノルズ数の計算
+        """)
+        st.latex(r"Re = \frac{vD}{\nu}")
+        st.markdown("""
+        - **Re < 2300**: 層流 → Nu = 3.66
+        - **Re ≥ 2300**: 乱流 → Dittus-Boelter式を使用
+        """)
+    
+    # ステップ3
+    with st.expander("📌 ステップ3: 熱伝達係数の計算"):
+        st.markdown("""
+        ### 3-1. ヌセルト数の決定
+        
+        **層流の場合（Re < 2300）：**
+        """)
+        st.latex(r"Nu = 3.66")
+        st.markdown("""
+        **乱流の場合（Re ≥ 2300）：**
+        """)
+        st.latex(r"Nu = 0.023 \cdot Re^{0.8} \cdot Pr^{0.3}")
+        st.markdown("""
+        - 冷却時（壁温 < バルク温度）でn = 0.3を使用
+        
+        ### 3-2. 管内側熱伝達係数
+        """)
+        st.latex(r"h_i = \frac{Nu \cdot k_{water}}{D}")
+        st.markdown("""
+        - kwater: 水の熱伝導率 [W/m·K]
+        - D: 配管内径 [m]
+        
+        ### 3-3. 管外側熱伝達係数
+        - ho = 300 [W/m²·K]（自然対流を仮定）
+        """)
+    
+    # ステップ4
+    with st.expander("📌 ステップ4: 総括熱伝達係数の計算"):
+        st.markdown("""
+        ### 4-1. 内径基準の総括熱伝達係数
+        """)
+        st.latex(r"U_i = \frac{1}{\frac{1}{h_i} + \frac{r_i \ln(r_o/r_i)}{k_{pipe}} + \frac{r_i}{r_o h_o}}")
+        st.markdown("""
+        各項の物理的意味：
+        - **第1項**: 管内側の対流熱抵抗
+        - **第2項**: 管壁の伝導熱抵抗
+        - **第3項**: 管外側の対流熱抵抗
+        
+        ### 4-2. 伝熱面積の計算
+        """)
+        st.latex(r"A = \pi D L_{total}")
+        st.markdown("""
+        - D: 配管内径 [m]
+        - Ltotal: U字管の総延長 = 2 × 管浸水距離 [m]
+        """)
+    
+    # ステップ5
+    with st.expander("📌 ステップ5: NTU-ε法による熱交換計算"):
+        st.markdown("""
+        ### 5-1. 伝熱単位数（NTU）の計算
+        """)
+        st.latex(r"NTU = \frac{UA}{\dot{m}c_p}")
+        st.markdown("""
+        - U: 総括熱伝達係数 [W/m²·K]
+        - A: 伝熱面積 [m²]
+        - ṁ: 質量流量 [kg/s]
+        - cp: 比熱 [J/kg·K]
+        
+        ### 5-2. 熱交換効率の計算
+        """)
+        st.latex(r"\varepsilon = 1 - e^{-NTU}")
+        st.markdown("""
+        - 対向流熱交換器で熱容量比Cr = 0の場合の理論解
+        - 地下水側の熱容量が非常に大きいと仮定
+        
+        ### 5-3. 出口温度の計算
+        """)
+        st.latex(r"T_{out} = T_{in} - \varepsilon(T_{in} - T_{ground})")
+        st.markdown("""
+        - Tin: 入口温度 [℃]
+        - Tground: 地下水温度 [℃]
+        - ε: 熱交換効率 [-]
+        """)
+    
+    # ステップ6
+    with st.expander("📌 ステップ6: 熱交換量の計算"):
+        st.markdown("""
+        ### 6-1. 総熱交換量
+        """)
+        st.latex(r"Q = \dot{m} \cdot c_p \cdot (T_{in} - T_{out})")
+        st.markdown("""
+        - ṁ: 総質量流量 [kg/s]
+        - cp: 比熱 [J/kg·K]
+        - 温度差から実際の熱移動量を計算
+        
+        ### 6-2. 熱流束の確認
+        """)
+        st.latex(r"q = \frac{Q}{A}")
+        st.markdown("""
+        - 単位面積あたりの熱流量 [W/m²]
+        - 設計の妥当性確認に使用
+        """)
+    
+    # ステップ7
+    with st.expander("📌 ステップ7: 地下水温度上昇の計算（オプション）"):
+        st.markdown("""
+        ### 7-1. 地下水体積の計算
+        """)
+        st.latex(r"V_{gw} = V_{boring} - V_{pipes}")
+        st.markdown("""
+        - Vboring: ボーリング孔体積 = π(D²/4)L
+        - Vpipes: 配管総体積（U字管なので2倍）
+        
+        ### 7-2. 地下水質量
+        """)
+        st.latex(r"m_{gw} = \rho_{water} \cdot V_{gw}")
+        
+        st.markdown("""
+        ### 7-3. 温度上昇の計算
+        
+        **A. 循環なしの場合（1回通水）：**
+        """)
+        st.latex(r"t_{transit} = \frac{L_{total}}{v}")
+        st.latex(r"\Delta T_{gw} = \frac{Q \cdot t_{transit}}{m_{gw} \cdot c_p}")
+        
+        st.markdown("""
+        **B. 循環ありの場合（連続運転）：**
+        
+        時間ステップごとに以下を反復：
+        1. 現在の地下水温度でNTU計算
+        2. 効率εと出口温度を計算
+        3. 熱交換量Qを計算
+        4. 地下水温度上昇ΔTを計算
+        5. 次ステップの入口温度 = 現在の出口温度
+        
+        ### 7-4. 温度上昇の制限
+        """)
+        st.latex(r"\Delta T_{gw,limited} = \min(\Delta T_{gw}, \Delta T_{limit})")
+        st.markdown("""
+        - ΔTlimit: ユーザー設定の上限値（5-20℃）
+        """)
+    
+    # ステップ8
+    with st.expander("📌 ステップ8: 最終計算と結果の評価"):
+        st.markdown("""
+        ### 8-1. 最終出口温度の決定
+        
+        地下水温度上昇を考慮した場合：
+        """)
+        st.latex(r"T_{ground,final} = T_{ground,initial} + \Delta T_{gw}")
+        st.latex(r"T_{out,final} = T_{in} - \varepsilon(T_{in} - T_{ground,final})")
+        
+        st.markdown("""
+        ### 8-2. 性能指標の評価
+        
+        **温度降下率：**
+        """)
+        st.latex(r"\eta_{temp} = \frac{T_{in} - T_{out}}{T_{in} - T_{ground}} \times 100\%")
+        
+        st.markdown("""
+        **熱交換効率の確認：**
+        - NTU > 0.3: 実用的な性能
+        - ε > 0.5: 良好な熱交換
+        
+        ### 8-3. 目標温度との比較
+        
+        目標温度を下回った場合の対策提案：
+        - 配管セット本数の増加
+        - 管浸水距離の延長
+        - 流量の調整
+        """)
+    
+    st.info("""
+    💡 **計算の特徴**
+    - すべての計算は理論式に基づいており、経験的な補正係数は最小限
+    - 温度依存の物性値を考慮することで、より正確な予測が可能
+    - 地下水温度上昇の考慮により、長時間運転時の性能低下を予測
+    """)
+    
     st.info("""
     💡 **注意事項**
     - 本計算は理想的な条件下での理論値です
