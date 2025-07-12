@@ -1324,28 +1324,28 @@ elif page == "複数配管比較":
     
     # 平均温度の計算（物性値計算用）
     avg_temp = (multi_initial_temp + effective_ground_temp) / 2
-        
-        # 温度依存の物性値計算
-        if avg_temp <= 20:
-            kinematic_viscosity = 1.004e-6
-            water_thermal_conductivity = 0.598
-            prandtl = 7.01
-            density = 998.2
-            specific_heat = 4182
-        elif avg_temp <= 25:
-            t_ratio = (avg_temp - 20) / 5
-            kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
-            water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
-            prandtl = 7.01 - (7.01 - 6.13) * t_ratio
-            density = 998.2 - (998.2 - 997.0) * t_ratio
-            specific_heat = 4182 - (4182 - 4179) * t_ratio
-        else:
-            kinematic_viscosity = 0.801e-6
-            water_thermal_conductivity = 0.615
-            prandtl = 5.42
-            density = 995.6
-            specific_heat = 4178
-        
+    
+    # 温度依存の物性値計算
+    if avg_temp <= 20:
+        kinematic_viscosity = 1.004e-6
+        water_thermal_conductivity = 0.598
+        prandtl = 7.01
+        density = 998.2
+        specific_heat = 4182
+    elif avg_temp <= 25:
+        t_ratio = (avg_temp - 20) / 5
+        kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
+        water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
+        prandtl = 7.01 - (7.01 - 6.13) * t_ratio
+        density = 998.2 - (998.2 - 997.0) * t_ratio
+        specific_heat = 4182 - (4182 - 4179) * t_ratio
+    else:
+        kinematic_viscosity = 0.801e-6
+        water_thermal_conductivity = 0.615
+        prandtl = 5.42
+        density = 995.6
+        specific_heat = 4178
+    
     pipe_thermal_cond = thermal_conductivity[multi_pipe_material]
     h_outer = 300
     total_length = multi_pipe_length * 2
