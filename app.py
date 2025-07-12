@@ -401,20 +401,6 @@ if page == "単一配管計算":
     # 計算結果のタイトル
     st.header("📈 計算結果")
     
-    # デバッグ情報の表示
-    with st.expander("デバッグ情報（開発用）"):
-        st.write("セッション状態の確認:")
-        st.write(f"- target_value: {st.session_state.get('target_value', 'Not found')}")
-        st.write(f"- initial_value: {st.session_state.get('initial_value', 'Not found')}")
-        st.write(f"- flow_value: {st.session_state.get('flow_value', 'Not found')}")
-        st.write(f"- ground_value: {st.session_state.get('ground_value', 'Not found')}")
-        st.write(f"- length_value: {st.session_state.get('length_value', 'Not found')}")
-        st.write(f"- boring_diameter: {st.session_state.get('boring_diameter', 'Not found')}")
-        st.write(f"- pipe_material: {st.session_state.get('pipe_material', 'Not found')}")
-        st.write(f"- pipe_diameter: {st.session_state.get('pipe_diameter', 'Not found')}")
-        st.write(f"- num_pipes_user: {st.session_state.get('num_pipes_user', 'Not found')}")
-        st.write(f"- consider_groundwater_temp_rise: {st.session_state.get('consider_groundwater_temp_rise', 'Not found')}")
-    
     # 入力セクションで定義された変数を取得
     # セッション状態から値を取得
     target_temp = st.session_state.get("target_value", 25.0)
@@ -687,6 +673,8 @@ if page == "単一配管計算":
                 final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
         else:
             groundwater_temp_rise = 0.0
+            # 地下水温度上昇を考慮しない場合、初回計算の値をそのまま使用
+            # （final_tempは既に586行目で計算済み）
         
         # 熱交換効率（％）
         if initial_temp != effective_ground_temp:
