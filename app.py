@@ -810,7 +810,7 @@ if page == "単一配管計算":
     
     with sub_col3:
         if consider_groundwater_temp_rise:
-            st.metric("地下水体積", f"{groundwater_volume:.3f} m³", help="ボーリング孔内の地下水量。配管を除いた有効体積")
+            st.metric("地下水体積", f"{groundwater_volume:.1f} m³", help="ボーリング孔内の地下水量。配管を除いた有効体積")
         else:
             st.metric("地下水体積", "-", help="温度上昇計算時のみ表示")
     
@@ -944,9 +944,9 @@ if page == "単一配管計算":
         st.subheader("🌊 地下水温度上昇の詳細")
         gw_col1, gw_col2, gw_col3, gw_col4 = st.columns(4)
         with gw_col1:
-            st.metric("掘削孔体積", f"{boring_volume:.3f} m³")
+            st.metric("掘削孔体積", f"{boring_volume:.1f} m³")
         with gw_col2:
-            st.metric("配管総体積", f"{pipe_total_volume:.3f} m³")
+            st.metric("配管総体積", f"{pipe_total_volume:.1f} m³")
         with gw_col3:
             st.metric("地下水質量", f"{groundwater_mass:.0f} kg")
         with gw_col4:
@@ -956,9 +956,9 @@ if page == "単一配管計算":
                 time_label = f"1回通水（{operation_hours*60:.1f}分）"
                 
             if groundwater_temp_rise_unlimited > temp_rise_limit:
-                st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃", f"制限前: {groundwater_temp_rise_unlimited:.2f}℃")
+                st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.1f}℃", f"制限前: {groundwater_temp_rise_unlimited:.1f}℃")
             else:
-                st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃")
+                st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.1f}℃")
     
         # 追加の計算結果表示（地下水温度上昇に関係なく表示）
         st.markdown("---")
@@ -966,7 +966,7 @@ if page == "単一配管計算":
     detail_col1, detail_col2, detail_col3, detail_col4 = st.columns(4)
     
     with detail_col1:
-        st.metric("流速", f"{velocity:.3f} m/s", help="配管内の水の流れる速度。0.5-2.0m/sが適正範囲")
+        st.metric("流速", f"{velocity:.1f} m/s", help="配管内の水の流れる速度。0.5-2.0m/sが適正範囲")
     
     with detail_col2:
         st.metric("レイノルズ数", f"{reynolds:.0f}", help="流れの状態を示す数値。2300以下は層流（おとなしい流れ）、以上は乱流（かき混ぜ効果あり）")
@@ -975,7 +975,7 @@ if page == "単一配管計算":
         st.metric("熱伝達係数", f"{heat_transfer_coefficient:.0f} W/m²·K", help="配管内面での熱の移動しやすさ。数値が大きいほど熱交換が活発")
     
     with detail_col4:
-        st.metric("NTU", f"{NTU:.3f}", help="熱交換の能力を示す無次元数。0.3以上で効率的な熱交換が期待できる")
+        st.metric("NTU", f"{NTU:.1f}", help="熱交換の能力を示す無次元数。0.3以上で効率的な熱交換が期待できる")
     
     # 物性値の表示
     st.markdown("---")
@@ -983,13 +983,13 @@ if page == "単一配管計算":
     prop_col1, prop_col2, prop_col3, prop_col4 = st.columns(4)
     
     with prop_col1:
-        st.metric("動粘度", f"{kinematic_viscosity*1e6:.3f}×10⁻⁶ m²/s", help="水の粘っこさ。温度が高いほど小さくなり流れやすくなる")
+        st.metric("動粘度", f"{kinematic_viscosity*1e6:.1f}×10⁻⁶ m²/s", help="水の粘っこさ。温度が高いほど小さくなり流れやすくなる")
     
     with prop_col2:
-        st.metric("熱伝導率", f"{water_thermal_conductivity:.3f} W/m·K", help="水の熱の伝わりやすさ。温度によって微妙に変化する")
+        st.metric("熱伝導率", f"{water_thermal_conductivity:.1f} W/m·K", help="水の熱の伝わりやすさ。温度によって微妙に変化する")
     
     with prop_col3:
-        st.metric("プラントル数", f"{prandtl:.2f}", help="水の熱的性質を表す数値。水は約6-7で、熱移動計算に使用")
+        st.metric("プラントル数", f"{prandtl:.1f}", help="水の熱的性質を表す数値。水は約6-7で、熱移動計算に使用")
     
     with prop_col4:
         st.metric("総括熱伝達係数", f"{U:.1f} W/m²·K")
@@ -1483,11 +1483,11 @@ elif page == "複数配管比較":
             "本数": n_pipes,
             "出口温度(℃)": round(final_t, 1),
             "効率(%)": round(eff_temp * 100, 1),
-            "流速(m/s)": round(vel, 3),
+            "流速(m/s)": round(vel, 1),
             "レイノルズ数": int(re),
             "h_i(W/m²K)": int(h),
             "U(W/m²K)": round(U_temp, 1),
-            "NTU": round(NTU_temp, 3)
+            "NTU": round(NTU_temp, 1)
         })
 
     df = pd.DataFrame(pipe_comparison)
