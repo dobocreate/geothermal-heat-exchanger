@@ -416,12 +416,14 @@ if page == "単一配管計算":
     consider_groundwater_temp_rise = st.session_state.get("consider_groundwater_temp_rise", False)
     
     # 地下水温度上昇関連の変数
+    operation_minutes = None  # デフォルト値を設定
     if consider_groundwater_temp_rise:
         consider_circulation = st.session_state.get("consider_circulation", False)
         if consider_circulation:
             circulation_type = st.session_state.get("circulation_type", "同じ水を循環")
+            operation_minutes = st.session_state.get("operation_value", 10)
             if circulation_type == "同じ水を循環":
-                operation_hours = st.session_state.get("hours_value", 8.0) / 60  # 分を時間に変換
+                operation_hours = operation_minutes / 60  # 分を時間に変換
             else:
                 operation_hours = 1  # 新しい水を連続供給の場合
         else:
