@@ -1190,7 +1190,7 @@ elif page == "複数配管比較":
                 compare_pipes = ["32A"]  # デフォルト値
         
         with row2_col2_multi:
-            st.subheader("地下水温度設定")
+            st.subheader("詳細設定")
             
             # 地下水温度上昇の考慮（複数配管用）
             multi_consider_groundwater_temp_rise = st.checkbox(
