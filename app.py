@@ -397,265 +397,279 @@ if page == "単一配管計算":
                 circulation_type = None
     
     st.markdown("---")  # 計算条件と結果を区切る
-    
-    # 計算実行ボタンと初期化ボタン（メインエリアに配置）
-    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
-    
-    with col2:
-        if st.button("🧮 計算実行", type="primary", use_container_width=True):
-            st.session_state.single_calculate_flag = True
-    
-    with col3:
-        if st.button("🔄 設定を初期化", type="secondary", use_container_width=True):
-            # 単一配管計算に関連するsession_stateの値を削除
-            keys_to_delete = [
-                "target_value", "initial_value", "flow_value", "ground_value",
-                "length_value", "boring_diameter", "pipe_material", "pipe_diameter",
-                "num_pipes_user", "consider_groundwater_temp_rise", "consider_circulation",
-                "circulation_type", "operation_value", "limit_value", "single_calculate_flag",
-                "previous_pipe_diameter"
-            ]
-            for key in keys_to_delete:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.rerun()
-    
-    # 計算フラグの初期化（単一配管計算用）
-    if "single_calculate_flag" not in st.session_state:
-        st.session_state.single_calculate_flag = False
 
     # 計算結果のタイトル
     st.header("📈 計算結果")
     
-    # 計算が実行されていない場合のメッセージ
-    if not st.session_state.single_calculate_flag:
-        st.info("💡 計算条件を設定して「計算実行」ボタンをクリックしてください。")
-    else:
-        # 計算が実行された場合のみ、以下の処理を行う
-        # 入力セクションで定義された変数を取得
-        # セッション状態から値を取得
-        target_temp = st.session_state.get("target_value", 25.0)
-        initial_temp = st.session_state.get("initial_value", 30.0)
-        flow_rate = st.session_state.get("flow_value", 50.0)
-        ground_temp = st.session_state.get("ground_value", 15.0)
-        pipe_length = st.session_state.get("length_value", 5.0)
-        boring_diameter = st.session_state.get("boring_diameter", "φ250")
-        boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
-        pipe_material = st.session_state.get("pipe_material", "鋼管")
-        pipe_diameter = st.session_state.get("pipe_diameter", "32A")
-        num_pipes_user = st.session_state.get("num_pipes_user", 1)
-        consider_groundwater_temp_rise = st.session_state.get("consider_groundwater_temp_rise", False)
-        
-        # 地下水温度上昇関連の変数
-        operation_minutes = None  # デフォルト値を設定
-        if consider_groundwater_temp_rise:
-            consider_circulation = st.session_state.get("consider_circulation", False)
-            if consider_circulation:
-                circulation_type = st.session_state.get("circulation_type", "同じ水を循環")
-                operation_minutes = st.session_state.get("operation_value", 10)
-                if circulation_type == "同じ水を循環":
-                    operation_hours = operation_minutes / 60  # 分を時間に変換
-                else:
-                    operation_hours = 1  # 新しい水を連続供給の場合
+    # 入力セクションで定義された変数を取得
+    # セッション状態から値を取得
+    target_temp = st.session_state.get("target_value", 25.0)
+    initial_temp = st.session_state.get("initial_value", 30.0)
+    flow_rate = st.session_state.get("flow_value", 50.0)
+    ground_temp = st.session_state.get("ground_value", 15.0)
+    pipe_length = st.session_state.get("length_value", 5.0)
+    boring_diameter = st.session_state.get("boring_diameter", "φ250")
+    boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
+    pipe_material = st.session_state.get("pipe_material", "鋼管")
+    pipe_diameter = st.session_state.get("pipe_diameter", "32A")
+    num_pipes_user = st.session_state.get("num_pipes_user", 1)
+    consider_groundwater_temp_rise = st.session_state.get("consider_groundwater_temp_rise", False)
+    
+    # 地下水温度上昇関連の変数
+    operation_minutes = None  # デフォルト値を設定
+    if consider_groundwater_temp_rise:
+        consider_circulation = st.session_state.get("consider_circulation", False)
+        if consider_circulation:
+            circulation_type = st.session_state.get("circulation_type", "同じ水を循環")
+            operation_minutes = st.session_state.get("operation_value", 10)
+            if circulation_type == "同じ水を循環":
+                operation_hours = operation_minutes / 60  # 分を時間に変換
             else:
-                operation_hours = 1  # デフォルト値（後で再計算される）
-                circulation_type = None
-            temp_rise_limit = st.session_state.get("limit_value", 5.0)
+                operation_hours = 1  # 新しい水を連続供給の場合
         else:
-            operation_hours = 1  # デフォルト値
-            temp_rise_limit = 5  # デフォルト値
-            consider_circulation = False
+            operation_hours = 1  # デフォルト値（後で再計算される）
             circulation_type = None
+        temp_rise_limit = st.session_state.get("limit_value", 5.0)
+    else:
+        operation_hours = 1  # デフォルト値
+        temp_rise_limit = 5  # デフォルト値
+        consider_circulation = False
+        circulation_type = None
+    
+    # 配管仕様データ（JIS規格に基づく内径mm）
+    pipe_specs = {
+        "15A": 16.1,
+        "20A": 22.2,
+        "25A": 28.0,
+        "32A": 33.5,  # summary.mdに合わせて修正
+        "40A": 41.2,
+        "50A": 52.6,
+        "65A": 67.8,
+        "80A": 80.1
+    }
+    
+    # 管径別の推奨本数（50L/minの総流量を分配）
+    pipe_counts = {
+        "15A": 1,   # 50 L/min × 1本
+        "20A": 1,   # 50 L/min × 1本
+        "25A": 1,   # 50 L/min × 1本
+        "32A": 4,   # 12.5 L/min × 4本
+        "40A": 2,   # 25 L/min × 2本
+        "50A": 1,   # 50 L/min × 1本
+        "65A": 1,   # 50 L/min × 1本
+        "80A": 1    # 50 L/min × 1本
+    }
+    
+    # 材質による熱伝導率 (W/m・K)
+    thermal_conductivity = {
+        "鋼管": 50.0,
+        "アルミ管": 237.0,
+        "銅管": 398.0
+    }
+    
+    # 配管外径データ（SGP規格）
+    pipe_outer_diameter_sgp = {
+        "15A": 21.7,   # mm
+        "20A": 27.2,   # mm
+        "25A": 34.0,   # mm
+        "32A": 42.7,   # mm
+        "40A": 48.6,   # mm
+        "50A": 60.5,   # mm
+        "65A": 76.3,   # mm
+        "80A": 89.1    # mm
+    }
+    
+    # 初期計算用の地下水温度
+    effective_ground_temp = ground_temp
+    
+    # 平均温度の計算（物性値計算用）
+    avg_temp = (initial_temp + effective_ground_temp) / 2
+    
+    # 配管内径と断面積の計算
+    inner_diameter = pipe_specs[pipe_diameter] / 1000  # m
+    pipe_area = math.pi * (inner_diameter / 2) ** 2  # m²
+    
+    # 1本あたりの流量を計算
+    num_pipes = num_pipes_user  # ユーザー設定値を使用
+    flow_per_pipe = flow_rate / num_pipes  # L/min/本
+    
+    # 流速の計算 (m/s)
+    flow_rate_m3s_per_pipe = flow_per_pipe / 60000  # L/min → m³/s
+    velocity = flow_rate_m3s_per_pipe / pipe_area
+    
+    # 温度依存の物性値計算（平均温度基準）
+    # 動粘度の計算 [m²/s]
+    if avg_temp <= 20:
+        kinematic_viscosity = 1.004e-6
+        water_thermal_conductivity = 0.598
+        prandtl = 7.01
+        density = 998.2
+        specific_heat = 4182
+    elif avg_temp <= 25:
+        # 線形補間
+        t_ratio = (avg_temp - 20) / 5
+        kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
+        water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
+        prandtl = 7.01 - (7.01 - 6.13) * t_ratio
+        density = 998.2 - (998.2 - 997.0) * t_ratio
+        specific_heat = 4182 - (4182 - 4179) * t_ratio
+    else:
+        kinematic_viscosity = 0.801e-6
+        water_thermal_conductivity = 0.615
+        prandtl = 5.42
+        density = 995.6
+        specific_heat = 4178
         
-        # 配管仕様データ（JIS規格に基づく内径mm）
-        pipe_specs = {
-            "15A": 16.1,
-            "20A": 22.2,
-            "25A": 28.0,
-            "32A": 33.5,  # summary.mdに合わせて修正
-            "40A": 41.2,
-            "50A": 52.6,
-            "65A": 67.8,
-            "80A": 80.1
-        }
+    reynolds = velocity * inner_diameter / kinematic_viscosity
+    
+    # ヌセルト数の計算（層流/乱流判定）
+    if reynolds < 2300:  # 層流
+        nusselt = 3.66
+    else:  # 乱流（Dittus-Boelter式、冷却時）
+        nusselt = 0.023 * (reynolds ** 0.8) * (prandtl ** 0.3)
+    
+    # 熱伝達係数の計算 (W/m²・K)
+    heat_transfer_coefficient = nusselt * water_thermal_conductivity / inner_diameter
         
-        # 管径別の推奨本数（50L/minの総流量を分配）
-        pipe_counts = {
-            "15A": 1,   # 50 L/min × 1本
-            "20A": 1,   # 50 L/min × 1本
-            "25A": 1,   # 50 L/min × 1本
-            "32A": 4,   # 12.5 L/min × 4本
-            "40A": 2,   # 25 L/min × 2本
-            "50A": 1,   # 50 L/min × 1本
-            "65A": 1,   # 50 L/min × 1本
-            "80A": 1    # 50 L/min × 1本
-        }
+    # 配管の熱抵抗を考慮した総括熱伝達係数
+    # 外径データ（JIS規格）
+    pipe_outer_diameters = {
+        "15A": 21.7 / 1000,  # m
+        "20A": 27.2 / 1000,
+        "25A": 34.0 / 1000,
+        "32A": 42.7 / 1000,
+        "40A": 48.6 / 1000,
+        "50A": 60.5 / 1000,
+        "65A": 76.3 / 1000,
+        "80A": 89.1 / 1000
+    }
+    
+    outer_diameter = pipe_outer_diameters[pipe_diameter]
+    pipe_thermal_cond = thermal_conductivity[pipe_material]
+    
+    # 管外側熱伝達係数（静止水中の自然対流）
+    h_outer = 300  # W/m²·K
+    
+    # 総括熱伝達係数 U (W/m²・K)
+    # 内径基準での計算
+    U = 1 / (1/heat_transfer_coefficient + 
+            inner_diameter/(2*pipe_thermal_cond) * math.log(outer_diameter/inner_diameter) + 
+            inner_diameter/(outer_diameter*h_outer))
+    
+    # 配管面積と掘削径の検証
+    total_pipe_area = num_pipes * math.pi * (outer_diameter / 2) ** 2 * 1000000  # mm²
+    boring_area = math.pi * (boring_diameter_mm / 2) ** 2  # mm²
+    
+    if total_pipe_area > boring_area * 0.8:  # 80%を超えたら警告
+        st.error(f"⚠️ 配管総面積が掘削径の80%を超えています！")
+        st.warning(f"配管総面積: {total_pipe_area:.0f}mm²")
+        st.warning(f"掘削断面積: {boring_area:.0f}mm²")
+        st.warning(f"占有率: {total_pipe_area/boring_area*100:.1f}%")
+    
+    # 熱交換面積（U字管として往復を考慮）
+    total_length = pipe_length * 2  # 往復分
+    heat_exchange_area = math.pi * inner_diameter * total_length
+    
+    # 質量流量（1本あたり）
+    mass_flow_rate_per_pipe = flow_rate_m3s_per_pipe * density  # kg/s
+    
+    # NTU（伝熱単位数）の計算（1本あたり）
+    NTU_per_pipe = U * heat_exchange_area / (mass_flow_rate_per_pipe * specific_heat)
+    
+    # 全体のNTU（並列配管の場合、1本あたりのNTUと同じ）
+    NTU = NTU_per_pipe
+    
+    # 効率の計算（対向流型熱交換器として近似）
+    effectiveness = 1 - math.exp(-NTU)
+    
+    # 最終温度の計算（初回）
+    final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
+    
+    # 変数の初期化（後で使用する可能性があるもの）
+    time_history = []
+    inlet_temp_history = []
+    outlet_temp_history = []
+    ground_temp_history = []
+    boring_volume = 0
+    pipe_total_volume = 0
+    groundwater_volume = 0
+    groundwater_mass = 0
+    heat_exchange_rate = 0
+    groundwater_temp_rise_unlimited = 0
+    
+    # 地下水温度上昇の計算
+    if consider_groundwater_temp_rise:
+        # 初期熱交換量の計算 [W]
+        heat_exchange_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (initial_temp - final_temp)
         
-        # 材質による熱伝導率 (W/m・K)
-        thermal_conductivity = {
-            "鋼管": 50.0,
-            "アルミ管": 237.0,
-            "銅管": 398.0
-        }
+        # 地下水の体積計算（ボーリング孔内のみ）
+        # 掘削孔の体積
+        boring_volume = math.pi * (boring_diameter_mm / 2000) ** 2 * pipe_length  # m³
+        # 配管の総体積（U字管なので往復分で2倍）
+        pipe_total_volume = math.pi * (outer_diameter / 2) ** 2 * pipe_length * num_pipes * 2  # m³
+        # 地下水体積
+        groundwater_volume = boring_volume - pipe_total_volume  # m³
+        groundwater_mass = groundwater_volume * density  # kg
         
-        # 配管外径データ（SGP規格）
-        pipe_outer_diameter_sgp = {
-            "15A": 21.7,   # mm
-            "20A": 27.2,   # mm
-            "25A": 34.0,   # mm
-            "32A": 42.7,   # mm
-            "40A": 48.6,   # mm
-            "50A": 60.5,   # mm
-            "65A": 76.3,   # mm
-            "80A": 89.1    # mm
-        }
-        
-        # 初期計算用の地下水温度
-        effective_ground_temp = ground_temp
-        
-        # 平均温度の計算（物性値計算用）
-        avg_temp = (initial_temp + effective_ground_temp) / 2
-        
-        # 配管内径と断面積の計算
-        inner_diameter = pipe_specs[pipe_diameter] / 1000  # m
-        pipe_area = math.pi * (inner_diameter / 2) ** 2  # m²
-        
-        # 1本あたりの流量を計算
-        num_pipes = num_pipes_user  # ユーザー設定値を使用
-        flow_per_pipe = flow_rate / num_pipes  # L/min/本
-        
-        # 流速の計算 (m/s)
-        flow_rate_m3s_per_pipe = flow_per_pipe / 60000  # L/min → m³/s
-        velocity = flow_rate_m3s_per_pipe / pipe_area
-        
-        # 温度依存の物性値計算（平均温度基準）
-        # 動粘度の計算 [m²/s]
-        if avg_temp <= 20:
-            kinematic_viscosity = 1.004e-6
-            water_thermal_conductivity = 0.598
-            prandtl = 7.01
-            density = 998.2
-            specific_heat = 4182
-        elif avg_temp <= 25:
-            # 線形補間
-            t_ratio = (avg_temp - 20) / 5
-            kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
-            water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
-            prandtl = 7.01 - (7.01 - 6.13) * t_ratio
-            density = 998.2 - (998.2 - 997.0) * t_ratio
-            specific_heat = 4182 - (4182 - 4179) * t_ratio
-        else:
-            kinematic_viscosity = 0.801e-6
-            water_thermal_conductivity = 0.615
-            prandtl = 5.42
-            density = 995.6
-            specific_heat = 4178
+        # 1回の通水時間を計算（循環を考慮しない場合）
+        if not consider_circulation:
+            # U字管の全長を流速で除して通水時間を求める
+            total_pipe_length = pipe_length * 2  # U字管往復
+            transit_time_seconds = total_pipe_length / velocity  # 秒
+            operation_hours = transit_time_seconds / 3600  # 時間に変換
             
-        reynolds = velocity * inner_diameter / kinematic_viscosity
-        
-        # ヌセルト数の計算（層流/乱流判定）
-        if reynolds < 2300:  # 層流
-            nusselt = 3.66
-        else:  # 乱流（Dittus-Boelter式、冷却時）
-            nusselt = 0.023 * (reynolds ** 0.8) * (prandtl ** 0.3)
-        
-        # 熱伝達係数の計算 (W/m²・K)
-        heat_transfer_coefficient = nusselt * water_thermal_conductivity / inner_diameter
+        # 循環方式に応じた計算
+        if consider_circulation and circulation_type == "同じ水を循環":
+            # 同じ水を循環させる場合の計算（反復計算）
+            time_step = 60  # 1分ごとの計算
+            num_steps = int(operation_hours * 3600 / time_step)
             
-        # 配管の熱抵抗を考慮した総括熱伝達係数
-        # 外径データ（JIS規格）
-        pipe_outer_diameters = {
-            "15A": 21.7 / 1000,  # m
-            "20A": 27.2 / 1000,
-            "25A": 34.0 / 1000,
-            "32A": 42.7 / 1000,
-            "40A": 48.6 / 1000,
-            "50A": 60.5 / 1000,
-            "65A": 76.3 / 1000,
-            "80A": 89.1 / 1000
-        }
-        
-        outer_diameter = pipe_outer_diameters[pipe_diameter]
-        pipe_thermal_cond = thermal_conductivity[pipe_material]
-        
-        # 管外側熱伝達係数（静止水中の自然対流）
-        h_outer = 300  # W/m²·K
-        
-        # 総括熱伝達係数 U (W/m²・K)
-        # 内径基準での計算
-        U = 1 / (1/heat_transfer_coefficient + 
-                inner_diameter/(2*pipe_thermal_cond) * math.log(outer_diameter/inner_diameter) + 
-                inner_diameter/(outer_diameter*h_outer))
-        
-        # 配管面積と掘削径の検証
-        total_pipe_area = num_pipes * math.pi * (outer_diameter / 2) ** 2 * 1000000  # mm²
-        boring_area = math.pi * (boring_diameter_mm / 2) ** 2  # mm²
-        
-        if total_pipe_area > boring_area * 0.8:  # 80%を超えたら警告
-            st.error(f"⚠️ 配管総面積が掘削径の80%を超えています！")
-            st.warning(f"配管総面積: {total_pipe_area:.0f}mm²")
-            st.warning(f"掘削断面積: {boring_area:.0f}mm²")
-            st.warning(f"占有率: {total_pipe_area/boring_area*100:.1f}%")
-        
-        # 熱交換面積（U字管として往復を考慮）
-        total_length = pipe_length * 2  # 往復分
-        heat_exchange_area = math.pi * inner_diameter * total_length
-        
-        # 質量流量（1本あたり）
-        mass_flow_rate_per_pipe = flow_rate_m3s_per_pipe * density  # kg/s
-        
-        # NTU（伝熱単位数）の計算（1本あたり）
-        NTU_per_pipe = U * heat_exchange_area / (mass_flow_rate_per_pipe * specific_heat)
-        
-        # 全体のNTU（並列配管の場合、1本あたりのNTUと同じ）
-        NTU = NTU_per_pipe
-        
-        # 効率の計算（対向流型熱交換器として近似）
-        effectiveness = 1 - math.exp(-NTU)
-        
-        # 最終温度の計算（初回）
-        final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
-        
-        # 変数の初期化（後で使用する可能性があるもの）
-        time_history = []
-        inlet_temp_history = []
-        outlet_temp_history = []
-        ground_temp_history = []
-        boring_volume = 0
-        pipe_total_volume = 0
-        groundwater_volume = 0
-        groundwater_mass = 0
-        heat_exchange_rate = 0
-        groundwater_temp_rise_unlimited = 0
-        
-        # 地下水温度上昇の計算
-        if consider_groundwater_temp_rise:
-            # 初期熱交換量の計算 [W]
-            heat_exchange_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (initial_temp - final_temp)
+            current_inlet_temp = initial_temp
+            current_ground_temp = ground_temp
             
-            # 地下水の体積計算（ボーリング孔内のみ）
-            # 掘削孔の体積
-            boring_volume = math.pi * (boring_diameter_mm / 2000) ** 2 * pipe_length  # m³
-            # 配管の総体積（U字管なので往復分で2倍）
-            pipe_total_volume = math.pi * (outer_diameter / 2) ** 2 * pipe_length * num_pipes * 2  # m³
-            # 地下水体積
-            groundwater_volume = boring_volume - pipe_total_volume  # m³
-            groundwater_mass = groundwater_volume * density  # kg
+            # 時系列データを保存するリスト
+            time_history = []
+            inlet_temp_history = []
+            outlet_temp_history = []
+            ground_temp_history = []
             
-            # 1回の通水時間を計算（循環を考慮しない場合）
-            if not consider_circulation:
-                # U字管の全長を流速で除して通水時間を求める
-                total_pipe_length = pipe_length * 2  # U字管往復
-                transit_time_seconds = total_pipe_length / velocity  # 秒
-                operation_hours = transit_time_seconds / 3600  # 時間に変換
+            for i in range(num_steps):
+                # 現在の温度での熱交換計算
+                current_effectiveness = 1 - math.exp(-NTU)
+                current_outlet_temp = current_inlet_temp - current_effectiveness * (current_inlet_temp - current_ground_temp)
                 
-            # 循環方式に応じた計算
-            if consider_circulation and circulation_type == "同じ水を循環":
-                # 同じ水を循環させる場合の計算（反復計算）
+                # 熱交換量
+                current_heat_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (current_inlet_temp - current_outlet_temp)
+                
+                # 地下水温度上昇
+                if groundwater_mass > 0:
+                    delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass * specific_heat)
+                    current_ground_temp += delta_ground_temp
+                    # 物理的制約：地下水温度は入口温度を超えない
+                    current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit, current_inlet_temp)
+                
+                # データを記録
+                time_history.append(i * time_step / 60)  # 分単位
+                inlet_temp_history.append(current_inlet_temp)
+                outlet_temp_history.append(current_outlet_temp)
+                ground_temp_history.append(current_ground_temp)
+                
+                # 次のステップの入口温度は現在の出口温度
+                current_inlet_temp = current_outlet_temp
+            
+            # 最終結果
+            final_temp = current_outlet_temp
+            effective_ground_temp = current_ground_temp
+            groundwater_temp_rise = current_ground_temp - ground_temp
+            groundwater_temp_rise_unlimited = groundwater_temp_rise
+            
+        else:
+            # 新しい水を連続供給する場合、または循環を考慮しない場合
+            if consider_circulation and circulation_type == "新しい水を連続供給":
+                # 時系列データを生成（新しい水を連続供給）
                 time_step = 60  # 1分ごとの計算
                 num_steps = int(operation_hours * 3600 / time_step)
                 
-                current_inlet_temp = initial_temp
                 current_ground_temp = ground_temp
                 
                 # 時系列データを保存するリスト
@@ -665,343 +679,298 @@ if page == "単一配管計算":
                 ground_temp_history = []
                 
                 for i in range(num_steps):
-                    # 現在の温度での熱交換計算
+                    # 現在の地下水温度での出口温度計算
                     current_effectiveness = 1 - math.exp(-NTU)
-                    current_outlet_temp = current_inlet_temp - current_effectiveness * (current_inlet_temp - current_ground_temp)
+                    current_outlet_temp = initial_temp - current_effectiveness * (initial_temp - current_ground_temp)
                     
                     # 熱交換量
-                    current_heat_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (current_inlet_temp - current_outlet_temp)
+                    current_heat_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (initial_temp - current_outlet_temp)
                     
                     # 地下水温度上昇
                     if groundwater_mass > 0:
                         delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass * specific_heat)
                         current_ground_temp += delta_ground_temp
                         # 物理的制約：地下水温度は入口温度を超えない
-                        current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit, current_inlet_temp)
+                        current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit, initial_temp)
                     
                     # データを記録
                     time_history.append(i * time_step / 60)  # 分単位
-                    inlet_temp_history.append(current_inlet_temp)
+                    inlet_temp_history.append(initial_temp)  # 入口温度は一定
                     outlet_temp_history.append(current_outlet_temp)
                     ground_temp_history.append(current_ground_temp)
-                    
-                    # 次のステップの入口温度は現在の出口温度
-                    current_inlet_temp = current_outlet_temp
                 
                 # 最終結果
-                final_temp = current_outlet_temp
+                final_temp = outlet_temp_history[-1] if outlet_temp_history else initial_temp
                 effective_ground_temp = current_ground_temp
                 groundwater_temp_rise = current_ground_temp - ground_temp
                 groundwater_temp_rise_unlimited = groundwater_temp_rise
                 
             else:
-                # 新しい水を連続供給する場合、または循環を考慮しない場合
-                if consider_circulation and circulation_type == "新しい水を連続供給":
-                    # 時系列データを生成（新しい水を連続供給）
-                    time_step = 60  # 1分ごとの計算
-                    num_steps = int(operation_hours * 3600 / time_step)
-                    
-                    current_ground_temp = ground_temp
-                    
-                    # 時系列データを保存するリスト
-                    time_history = []
-                    inlet_temp_history = []
-                    outlet_temp_history = []
-                    ground_temp_history = []
-                    
-                    for i in range(num_steps):
-                        # 現在の地下水温度での出口温度計算
-                        current_effectiveness = 1 - math.exp(-NTU)
-                        current_outlet_temp = initial_temp - current_effectiveness * (initial_temp - current_ground_temp)
-                        
-                        # 熱交換量
-                        current_heat_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (initial_temp - current_outlet_temp)
-                        
-                        # 地下水温度上昇
-                        if groundwater_mass > 0:
-                            delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass * specific_heat)
-                            current_ground_temp += delta_ground_temp
-                            # 物理的制約：地下水温度は入口温度を超えない
-                            current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit, initial_temp)
-                        
-                        # データを記録
-                        time_history.append(i * time_step / 60)  # 分単位
-                        inlet_temp_history.append(initial_temp)  # 入口温度は一定
-                        outlet_temp_history.append(current_outlet_temp)
-                        ground_temp_history.append(current_ground_temp)
-                    
-                    # 最終結果
-                    final_temp = outlet_temp_history[-1] if outlet_temp_history else initial_temp
-                    effective_ground_temp = current_ground_temp
-                    groundwater_temp_rise = current_ground_temp - ground_temp
-                    groundwater_temp_rise_unlimited = groundwater_temp_rise
-                    
+                # 循環を考慮しない場合（1回通水）
+                operation_time = operation_hours * 3600  # 秒
+                if groundwater_mass > 0:
+                    groundwater_temp_rise = (heat_exchange_rate * operation_time) / (groundwater_mass * specific_heat)
                 else:
-                    # 循環を考慮しない場合（1回通水）
-                    operation_time = operation_hours * 3600  # 秒
-                    if groundwater_mass > 0:
-                        groundwater_temp_rise = (heat_exchange_rate * operation_time) / (groundwater_mass * specific_heat)
-                    else:
-                        st.error("⚠️ 地下水体積が負またはゼロです。配管が多すぎるか、掘削径が小さすぎます。")
-                        groundwater_temp_rise = 0.0
-                    
-                    # 温度上昇を制限（物理的制約も考慮）
-                    groundwater_temp_rise_unlimited = groundwater_temp_rise
-                    # 地下水温度は入口温度を超えない
-                    max_possible_rise = initial_temp - ground_temp
-                    groundwater_temp_rise = min(groundwater_temp_rise, temp_rise_limit, max_possible_rise)
-                    
-                    # 実効地下水温度を更新
-                    effective_ground_temp = ground_temp + groundwater_temp_rise
-                    
-                    # 最終温度を再計算
-                    final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
-        else:
-            groundwater_temp_rise = 0.0
-            # 地下水温度上昇を考慮しない場合、初回計算の値をそのまま使用
-            # （final_tempは既に586行目で計算済み）
-        
-        # 熱交換効率（％）
-        if initial_temp != effective_ground_temp:
-            efficiency = effectiveness * 100
-        else:
-            efficiency = 0
-        
-        # 結果表示
-        # 目標温度との比較（計算結果の上に表示）
-        if final_temp > target_temp:
-            st.warning(f"⚠️ 目標温度（{target_temp}℃）を超えています")
-        else:
-            st.success("✅ 目標温度範囲内です")
-        
-        st.markdown("")  # スペースを追加
-        
-        # 重要な3つの指標を枠線で強調表示
-        main_col1, main_col2, main_col3 = st.columns([1, 1, 1], gap="medium")
-        
-        with main_col1:
+                    st.error("⚠️ 地下水体積が負またはゼロです。配管が多すぎるか、掘削径が小さすぎます。")
+                    groundwater_temp_rise = 0.0
+                
+                # 温度上昇を制限（物理的制約も考慮）
+                groundwater_temp_rise_unlimited = groundwater_temp_rise
+                # 地下水温度は入口温度を超えない
+                max_possible_rise = initial_temp - ground_temp
+                groundwater_temp_rise = min(groundwater_temp_rise, temp_rise_limit, max_possible_rise)
+                
+                # 実効地下水温度を更新
+                effective_ground_temp = ground_temp + groundwater_temp_rise
+                
+                # 最終温度を再計算
+                final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
+    else:
+        groundwater_temp_rise = 0.0
+        # 地下水温度上昇を考慮しない場合、初回計算の値をそのまま使用
+        # （final_tempは既に586行目で計算済み）
+    
+    # 熱交換効率（％）
+    if initial_temp != effective_ground_temp:
+        efficiency = effectiveness * 100
+    else:
+        efficiency = 0
+    
+    # 結果表示
+    # 目標温度との比較（計算結果の上に表示）
+    if final_temp > target_temp:
+        st.warning(f"⚠️ 目標温度（{target_temp}℃）を超えています")
+    else:
+        st.success("✅ 目標温度範囲内です")
+    
+    st.markdown("")  # スペースを追加
+    
+    # 重要な3つの指標を枠線で強調表示
+    main_col1, main_col2, main_col3 = st.columns([1, 1, 1], gap="medium")
+    
+    with main_col1:
+        st.markdown(f"""
+        <div style="border: 3px solid #ff4b4b; border-radius: 10px; padding: 13px; background-color: #fff5f5; text-align: center; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: #ff4b4b; font-size: 18px;">🌡️ 出口温度</h3>
+            <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{final_temp:.1f}℃</h1>
+            <p style="margin: 0; color: #666; font-size: 14px;">温度降下: {initial_temp - final_temp:.1f}℃</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("")  # モバイル表示時のスペース追加
+    
+    with main_col2:
+        if consider_groundwater_temp_rise:
             st.markdown(f"""
-            <div style="border: 3px solid #ff4b4b; border-radius: 10px; padding: 13px; background-color: #fff5f5; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #ff4b4b; font-size: 18px;">🌡️ 出口温度</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{final_temp:.1f}℃</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">温度降下: {initial_temp - final_temp:.1f}℃</p>
+            <div style="border: 3px solid #1976d2; border-radius: 10px; padding: 13px; background-color: #f0f7ff; text-align: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: #1976d2; font-size: 18px;">💧 地下水温</h3>
+                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{effective_ground_temp:.1f}℃</h1>
+                <p style="margin: 0; color: #666; font-size: 14px;">温度上昇: +{groundwater_temp_rise:.1f}℃</p>
             </div>
             """, unsafe_allow_html=True)
             st.markdown("")  # モバイル表示時のスペース追加
-        
-        with main_col2:
-            if consider_groundwater_temp_rise:
-                st.markdown(f"""
-                <div style="border: 3px solid #1976d2; border-radius: 10px; padding: 13px; background-color: #f0f7ff; text-align: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; color: #1976d2; font-size: 18px;">💧 地下水温</h3>
-                    <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{effective_ground_temp:.1f}℃</h1>
-                    <p style="margin: 0; color: #666; font-size: 14px;">温度上昇: +{groundwater_temp_rise:.1f}℃</p>
-                </div>
-                """, unsafe_allow_html=True)
-                st.markdown("")  # モバイル表示時のスペース追加
-            else:
-                st.markdown(f"""
-                <div style="border: 3px solid #1976d2; border-radius: 10px; padding: 13px; background-color: #f0f7ff; text-align: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; color: #1976d2; font-size: 18px;">💧 地下水温</h3>
-                    <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{effective_ground_temp:.1f}℃</h1>
-                    <p style="margin: 0; color: #666; font-size: 14px;">初期温度のまま</p>
-                </div>
-                """, unsafe_allow_html=True)
-                st.markdown("")  # モバイル表示時のスペース追加
-        
-        with main_col3:
-            # 通水時間の計算
-            total_pipe_length = pipe_length * 2  # U字管往復
-            transit_time_seconds = total_pipe_length / velocity
-            transit_time_minutes = transit_time_seconds / 60
-            
-            if consider_circulation:
-                time_display = f"{operation_minutes}"
-                time_unit = "分"
-                time_description = "循環運転時間"
-            else:
-                time_display = f"{transit_time_minutes:.1f}"
-                time_unit = "分"
-                time_description = "1回通水時間"
-            
+        else:
             st.markdown(f"""
-            <div style="border: 3px solid #4caf50; border-radius: 10px; padding: 13px; background-color: #f1f8e9; text-align: center; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: #4caf50; font-size: 18px;">⏱️ 通水時間</h3>
-                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{time_display}{time_unit}</h1>
-                <p style="margin: 0; color: #666; font-size: 14px;">{time_description}</p>
+            <div style="border: 3px solid #1976d2; border-radius: 10px; padding: 13px; background-color: #f0f7ff; text-align: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: #1976d2; font-size: 18px;">💧 地下水温</h3>
+                <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{effective_ground_temp:.1f}℃</h1>
+                <p style="margin: 0; color: #666; font-size: 14px;">初期温度のまま</p>
             </div>
             """, unsafe_allow_html=True)
-        
-        st.markdown("")  # スペース追加
-        
-        # その他の指標（1行4列）
-        sub_col1, sub_col2, sub_col3, sub_col4 = st.columns(4)
-        
-        with sub_col1:
-            st.metric("熱交換効率", f"{efficiency:.1f}%", help="水から地下水への熱の移動割合。100%に近いほど効率的")
-        
-        with sub_col2:
-            if consider_groundwater_temp_rise:
-                st.metric("熱交換量", f"{heat_exchange_rate/1000:.1f} kW", help="地下に捨てられる熱量。エアコン1台は約2-3kW")
-            else:
-                heat_exchange_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (initial_temp - final_temp)
-                st.metric("熱交換量", f"{heat_exchange_rate/1000:.1f} kW", help="地下に捨てられる熱量。エアコン1台は約2-3kW")
-        
-        with sub_col3:
-            if consider_groundwater_temp_rise:
-                st.metric("地下水体積", f"{groundwater_volume:.3f} m³", help="ボーリング孔内の地下水量。配管を除いた有効体積")
-            else:
-                st.metric("地下水体積", "-", help="温度上昇計算時のみ表示")
-        
-        with sub_col4:
-            st.metric("配管本数", f"{num_pipes} セット")
-        
-        # 結果表示終了
-        
-        # 最適化提案（コメントアウト - 将来的に復活しやすいように）
-        # st.markdown("---")
-        # st.subheader("⚙️ 最適化提案")
-        # 
-        # if final_temp > target_temp:
-        #     st.warning(f"⚠️ 目標温度（{target_temp}℃）を超えています")
-        #     st.markdown("**改善提案：**")
-        #     if pipe_length < 20:
-        #         st.markdown(f"- 管浸水距離を約{20}mに延長（現在: {pipe_length}m）")
-        #     else:
-        #         st.markdown("- より大口径の配管を検討")
-        #     st.markdown("- 地下水循環システムの導入")
-        #     if pipe_diameter != "32A":
-        #         st.markdown("- 32A配管の使用（最適効率）")
-        #     else:
-        #         st.markdown("- 複数の32A配管を並列配置")
-        # else:
-        #     st.success("✅ 目標温度範囲内です")
-        
-        # 計算条件の表示（コメントアウト - 将来的に復活しやすいように）
-        # st.markdown("---")
-        # st.subheader("📝 計算条件")
-        # condition_col1, condition_col2, condition_col3 = st.columns(3)
-        # 
-        # with condition_col1:
-        #     st.markdown("**基本条件**")
-        #     st.markdown(f"- 初期温度: {initial_temp}℃")
-        #     st.markdown(f"- 地下水温度: {ground_temp}℃")
-        #     st.markdown(f"- 目標温度: {target_temp}℃")
-        #     if consider_groundwater_temp_rise:
-        #         st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise:.2f}℃（自動計算）")
-        #         st.markdown(f"- 最終地下水温度: {effective_ground_temp:.1f}℃")
-        #         if consider_circulation:
-        #             st.markdown(f"- 運転時間: {operation_minutes}分")
-        #         else:
-        #             st.markdown(f"- 通水時間: {operation_hours*3600:.1f}秒（{operation_hours*60:.1f}分）")
-        #         st.markdown(f"- 温度上昇上限: {temp_rise_limit}℃")
-        #     st.markdown(f"- 掘削径: {boring_diameter}")
-        # 
-        # with condition_col2:
-        #     st.markdown("**流量条件**")
-        #     st.markdown(f"- 総流量: {flow_rate} L/min")
-        #     st.markdown(f"- 管浸水距離: {pipe_length} m")
-        #     st.markdown(f"- 管径: {pipe_diameter}")
-        # 
-        # with condition_col3:
-        #     st.markdown("**配管仕様**")
-        #     st.markdown(f"- 配管材質: {pipe_material}")
-        #     st.markdown(f"- 内径: {inner_diameter*1000:.1f} mm")
-        #     st.markdown(f"- 外径: {outer_diameter*1000:.1f} mm")
-        #     st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
-        #     st.markdown(f"- 配管セット本数: {num_pipes} セット")
-        
-        # 温度変化グラフ（循環を考慮する場合）
-        if consider_groundwater_temp_rise and consider_circulation:
-            st.markdown("---")
-            st.subheader("📊 温度変化の時系列")
-            
-            # グラフを作成
-            fig = go.Figure()
-            
-            # 入口温度（循環水温度）
-            fig.add_trace(go.Scatter(
-                x=time_history,
-                y=inlet_temp_history,
-            mode='lines',
-            name='入口温度（循環水）',
-            line=dict(color='red', width=2)
-            ))
-            
-            # 出口温度
-            fig.add_trace(go.Scatter(
-            x=time_history,
-            y=outlet_temp_history,
-            mode='lines',
-            name='出口温度',
-            line=dict(color='blue', width=2)
-            ))
-            
-            # 地下水温度
-            fig.add_trace(go.Scatter(
-            x=time_history,
-            y=ground_temp_history,
-            mode='lines',
-            name='地下水温度',
-            line=dict(color='green', width=2, dash='dash')
-            ))
-            
-            # 目標温度線
-            fig.add_hline(y=target_temp, line_dash="dot", line_color="gray", 
-                     annotation_text=f"目標温度 {target_temp}℃", 
-                     annotation_position="right")
-            
-            # 初期地下水温度線
-            fig.add_hline(y=ground_temp, line_dash="dot", line_color="lightgreen", 
-                     annotation_text=f"初期地下水温度 {ground_temp}℃", 
-                     annotation_position="left")
-            
-            # グラフタイトルを運転方式に応じて変更
-            graph_title = "循環による温度変化" if circulation_type == "同じ水を循環" else "連続供給による温度変化"
-            
-            fig.update_layout(
-            title=graph_title,
-            xaxis_title="経過時間（分）",
-            yaxis_title="温度（℃）",
-            height=400,
-            showlegend=True,
-            hovermode='x unified'
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # 収束状況の説明
-            if circulation_type == "同じ水を循環":
-                convergence_temp = (inlet_temp_history[-1] + ground_temp_history[-1]) / 2
-                st.info(f"💡 {operation_minutes}分後の状態：循環水温度 {inlet_temp_history[-1]:.1f}℃、地下水温度 {ground_temp_history[-1]:.1f}℃に向かって収束中")
-            else:
-                st.info(f"💡 {operation_minutes}分後の状態：出口温度 {outlet_temp_history[-1]:.1f}℃、地下水温度 {ground_temp_history[-1]:.1f}℃")
-        
-        # 地下水温度上昇の詳細（チェックされている場合）
-        if consider_groundwater_temp_rise:
-            st.markdown("---")
-            st.subheader("🌊 地下水温度上昇の詳細")
-            gw_col1, gw_col2, gw_col3, gw_col4 = st.columns(4)
-            with gw_col1:
-                st.metric("掘削孔体積", f"{boring_volume:.3f} m³")
-            with gw_col2:
-                st.metric("配管総体積", f"{pipe_total_volume:.3f} m³")
-            with gw_col3:
-                st.metric("地下水質量", f"{groundwater_mass:.0f} kg")
-            with gw_col4:
-                if consider_circulation:
-                    time_label = f"{operation_minutes}分運転"
-                else:
-                    time_label = f"1回通水（{operation_hours*60:.1f}分）"
-                    
-                if groundwater_temp_rise_unlimited > temp_rise_limit:
-                    st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃", f"制限前: {groundwater_temp_rise_unlimited:.2f}℃")
-                else:
-                    st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃")
+            st.markdown("")  # モバイル表示時のスペース追加
     
-    # 追加の計算結果表示（地下水温度上昇に関係なく表示）
-    st.markdown("---")
-    st.subheader("詳細パラメータ")
+    with main_col3:
+        # 通水時間の計算
+        total_pipe_length = pipe_length * 2  # U字管往復
+        transit_time_seconds = total_pipe_length / velocity
+        transit_time_minutes = transit_time_seconds / 60
+        
+        if consider_circulation:
+            time_display = f"{operation_minutes}"
+            time_unit = "分"
+            time_description = "循環運転時間"
+        else:
+            time_display = f"{transit_time_minutes:.1f}"
+            time_unit = "分"
+            time_description = "1回通水時間"
+        
+        st.markdown(f"""
+        <div style="border: 3px solid #4caf50; border-radius: 10px; padding: 13px; background-color: #f1f8e9; text-align: center; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: #4caf50; font-size: 18px;">⏱️ 通水時間</h3>
+            <h1 style="margin: 0px 0; color: #333; font-size: 36px;">{time_display}{time_unit}</h1>
+            <p style="margin: 0; color: #666; font-size: 14px;">{time_description}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("")  # スペース追加
+    
+    # その他の指標（1行4列）
+    sub_col1, sub_col2, sub_col3, sub_col4 = st.columns(4)
+    
+    with sub_col1:
+        st.metric("熱交換効率", f"{efficiency:.1f}%", help="水から地下水への熱の移動割合。100%に近いほど効率的")
+    
+    with sub_col2:
+        if consider_groundwater_temp_rise:
+            st.metric("熱交換量", f"{heat_exchange_rate/1000:.1f} kW", help="地下に捨てられる熱量。エアコン1台は約2-3kW")
+        else:
+            heat_exchange_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (initial_temp - final_temp)
+            st.metric("熱交換量", f"{heat_exchange_rate/1000:.1f} kW", help="地下に捨てられる熱量。エアコン1台は約2-3kW")
+    
+    with sub_col3:
+        if consider_groundwater_temp_rise:
+            st.metric("地下水体積", f"{groundwater_volume:.3f} m³", help="ボーリング孔内の地下水量。配管を除いた有効体積")
+        else:
+            st.metric("地下水体積", "-", help="温度上昇計算時のみ表示")
+    
+    with sub_col4:
+        st.metric("配管本数", f"{num_pipes} セット")
+    
+    # 結果表示終了
+    
+    # 最適化提案（コメントアウト - 将来的に復活しやすいように）
+    # st.markdown("---")
+    # st.subheader("⚙️ 最適化提案")
+    # 
+    # if final_temp > target_temp:
+    #     st.warning(f"⚠️ 目標温度（{target_temp}℃）を超えています")
+    #     st.markdown("**改善提案：**")
+    #     if pipe_length < 20:
+    #         st.markdown(f"- 管浸水距離を約{20}mに延長（現在: {pipe_length}m）")
+    #     else:
+    #         st.markdown("- より大口径の配管を検討")
+    #     st.markdown("- 地下水循環システムの導入")
+    #     if pipe_diameter != "32A":
+    #         st.markdown("- 32A配管の使用（最適効率）")
+    #     else:
+    #         st.markdown("- 複数の32A配管を並列配置")
+    # else:
+    #     st.success("✅ 目標温度範囲内です")
+    
+    # 計算条件の表示（コメントアウト - 将来的に復活しやすいように）
+    # st.markdown("---")
+    # st.subheader("📝 計算条件")
+    # condition_col1, condition_col2, condition_col3 = st.columns(3)
+    # 
+    # with condition_col1:
+    #     st.markdown("**基本条件**")
+    #     st.markdown(f"- 初期温度: {initial_temp}℃")
+    #     st.markdown(f"- 地下水温度: {ground_temp}℃")
+    #     st.markdown(f"- 目標温度: {target_temp}℃")
+    #     if consider_groundwater_temp_rise:
+    #         st.markdown(f"- 地下水温度上昇: +{groundwater_temp_rise:.2f}℃（自動計算）")
+    #         st.markdown(f"- 最終地下水温度: {effective_ground_temp:.1f}℃")
+    #         if consider_circulation:
+    #             st.markdown(f"- 運転時間: {operation_minutes}分")
+    #         else:
+    #             st.markdown(f"- 通水時間: {operation_hours*3600:.1f}秒（{operation_hours*60:.1f}分）")
+    #         st.markdown(f"- 温度上昇上限: {temp_rise_limit}℃")
+    #     st.markdown(f"- 掘削径: {boring_diameter}")
+    # 
+    # with condition_col2:
+    #     st.markdown("**流量条件**")
+    #     st.markdown(f"- 総流量: {flow_rate} L/min")
+    #     st.markdown(f"- 管浸水距離: {pipe_length} m")
+    #     st.markdown(f"- 管径: {pipe_diameter}")
+    # 
+    # with condition_col3:
+    #     st.markdown("**配管仕様**")
+    #     st.markdown(f"- 配管材質: {pipe_material}")
+    #     st.markdown(f"- 内径: {inner_diameter*1000:.1f} mm")
+    #     st.markdown(f"- 外径: {outer_diameter*1000:.1f} mm")
+    #     st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
+    #     st.markdown(f"- 配管セット本数: {num_pipes} セット")
+    
+    # 温度変化グラフ（循環を考慮する場合）
+    if consider_groundwater_temp_rise and consider_circulation:
+        st.markdown("---")
+        st.subheader("📊 温度変化の時系列")
+        
+        # グラフを作成
+        fig = go.Figure()
+        
+        # 入口温度（循環水温度）
+        fig.add_trace(go.Scatter(
+            x=time_history,
+            y=inlet_temp_history,
+        mode='lines',
+        name='入口温度（循環水）',
+        line=dict(color='red', width=2)
+        ))
+        
+        # 出口温度
+        fig.add_trace(go.Scatter(
+        x=time_history,
+        y=outlet_temp_history,
+        mode='lines',
+        name='出口温度',
+        line=dict(color='blue', width=2)
+        ))
+        
+        # 地下水温度
+        fig.add_trace(go.Scatter(
+        x=time_history,
+        y=ground_temp_history,
+        mode='lines',
+        name='地下水温度',
+        line=dict(color='green', width=2, dash='dash')
+        ))
+        
+        # 目標温度線
+        fig.add_hline(y=target_temp, line_dash="dot", line_color="gray", 
+                 annotation_text=f"目標温度 {target_temp}℃", 
+                 annotation_position="right")
+        
+        # 初期地下水温度線
+        fig.add_hline(y=ground_temp, line_dash="dot", line_color="lightgreen", 
+                 annotation_text=f"初期地下水温度 {ground_temp}℃", 
+                 annotation_position="left")
+        
+        # グラフタイトルを運転方式に応じて変更
+        graph_title = "循環による温度変化" if circulation_type == "同じ水を循環" else "連続供給による温度変化"
+        
+        fig.update_layout(
+        title=graph_title,
+        xaxis_title="経過時間（分）",
+        yaxis_title="温度（℃）",
+        height=400,
+        showlegend=True,
+        hovermode='x unified'
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # 収束状況の説明
+        if circulation_type == "同じ水を循環":
+            convergence_temp = (inlet_temp_history[-1] + ground_temp_history[-1]) / 2
+            st.info(f"💡 {operation_minutes}分後の状態：循環水温度 {inlet_temp_history[-1]:.1f}℃、地下水温度 {ground_temp_history[-1]:.1f}℃に向かって収束中")
+        else:
+            st.info(f"💡 {operation_minutes}分後の状態：出口温度 {outlet_temp_history[-1]:.1f}℃、地下水温度 {ground_temp_history[-1]:.1f}℃")
+    
+    # 地下水温度上昇の詳細（チェックされている場合）
+    if consider_groundwater_temp_rise:
+        st.markdown("---")
+        st.subheader("🌊 地下水温度上昇の詳細")
+        gw_col1, gw_col2, gw_col3, gw_col4 = st.columns(4)
+        with gw_col1:
+            st.metric("掘削孔体積", f"{boring_volume:.3f} m³")
+        with gw_col2:
+            st.metric("配管総体積", f"{pipe_total_volume:.3f} m³")
+        with gw_col3:
+            st.metric("地下水質量", f"{groundwater_mass:.0f} kg")
+        with gw_col4:
+            if consider_circulation:
+                time_label = f"{operation_minutes}分運転"
+            else:
+                time_label = f"1回通水（{operation_hours*60:.1f}分）"
+                
+            if groundwater_temp_rise_unlimited > temp_rise_limit:
+                st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃", f"制限前: {groundwater_temp_rise_unlimited:.2f}℃")
+            else:
+                st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃")
+    
+        # 追加の計算結果表示（地下水温度上昇に関係なく表示）
+        st.markdown("---")
+        st.subheader("詳細パラメータ")
     detail_col1, detail_col2, detail_col3, detail_col4 = st.columns(4)
     
     with detail_col1:
@@ -1036,7 +1005,7 @@ if page == "単一配管計算":
 elif page == "複数配管比較":
     # ページ遷移時のスクロールリセット用
     if st.session_state.page_changed:
-        st.empty()
+            st.empty()
     
     # タイトル
     st.markdown("<h1 style='text-align: center;'>📊 複数配管比較計算</h1>", unsafe_allow_html=True)
@@ -1070,12 +1039,7 @@ elif page == "複数配管比較":
         else:
             operation_hours = 1  # デフォルト値（後で再計算される）
             circulation_type = None
-        temp_rise_limit = st.session_state.get("limit_value", 5.0)
-    else:
-        operation_hours = 1  # デフォルト値
-        temp_rise_limit = 5  # デフォルト値
-        consider_circulation = False
-        circulation_type = None
+            temp_rise_limit = st.session_state.get("limit_value", 5.0)
 
     # 各管径のセット本数を設定
     st.subheader("配管セット本数の設定")
@@ -1139,273 +1103,237 @@ elif page == "複数配管比較":
             "銅管": 398.0
         }
         
-        st.markdown("---")  # 計算条件と結果を区切る
+        # 初期計算用の地下水温度
+        effective_ground_temp = ground_temp
+        groundwater_temp_rise = 0.0  # 初期値
         
-        # 計算実行ボタンと初期化ボタン（メインエリアに配置）
-        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+        # 平均温度の計算
+        avg_temp = (initial_temp + effective_ground_temp) / 2
+        
+        # 温度依存の物性値計算
+        if avg_temp <= 20:
+            kinematic_viscosity = 1.004e-6
+            water_thermal_conductivity = 0.598
+            prandtl = 7.01
+            density = 998.2
+            specific_heat = 4182
+        elif avg_temp <= 25:
+            t_ratio = (avg_temp - 20) / 5
+            kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
+            water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
+            prandtl = 7.01 - (7.01 - 6.13) * t_ratio
+            density = 998.2 - (998.2 - 997.0) * t_ratio
+            specific_heat = 4182 - (4182 - 4179) * t_ratio
+        else:
+            kinematic_viscosity = 0.801e-6
+            water_thermal_conductivity = 0.615
+            prandtl = 5.42
+            density = 995.6
+            specific_heat = 4178
+        
+        pipe_thermal_cond = thermal_conductivity[pipe_material]
+        h_outer = 300
+        total_length = pipe_length * 2
+        boring_area = math.pi * (boring_diameter_mm / 2) ** 2  # mm²
+        
+        # 管径別比較データの計算
+        pipe_comparison = []
+        warnings_list = []  # 警告メッセージ用リスト
+        
+        for pipe_size in ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"]:
+            # 各管径での計算
+            inner_d = pipe_specs[pipe_size] / 1000
+            area = math.pi * (inner_d / 2) ** 2
+            n_pipes = pipe_counts_user[pipe_size]
+            flow_per_p = flow_rate / n_pipes
+            flow_rate_m3s_per_p = flow_per_p / 60000
+            vel = flow_rate_m3s_per_p / area
+            re = vel * inner_d / kinematic_viscosity
+            
+            if re < 2300:
+                nu = 3.66
+            else:
+                nu = 0.023 * (re ** 0.8) * (prandtl ** 0.3)
+            
+            h = nu * water_thermal_conductivity / inner_d
+            
+            # 外径データ（JIS規格）
+            pipe_outer_diameters_comp = {
+                "15A": 21.7 / 1000,  # m
+                "20A": 27.2 / 1000,
+                "25A": 34.0 / 1000,
+                "32A": 42.7 / 1000,
+                "40A": 48.6 / 1000,
+                "50A": 60.5 / 1000,
+                "65A": 76.3 / 1000,
+                "80A": 89.1 / 1000
+            }
+            
+            outer_d = pipe_outer_diameters_comp[pipe_size]
+            
+            # 配管面積と掘削径の検証
+            total_pipe_area_temp = n_pipes * math.pi * (outer_d / 2) ** 2 * 1000000  # mm²
+            if total_pipe_area_temp > boring_area * 0.8:
+                warnings_list.append(f"{pipe_size}: 配管総面積が掘削径の80%を超過 ({total_pipe_area_temp/boring_area*100:.1f}%)")
+            
+            # 総括熱伝達係数（内径基準）
+            U_temp = 1 / (1/h + 
+                         inner_d/(2*pipe_thermal_cond) * math.log(outer_d/inner_d) + 
+                         inner_d/(outer_d*h_outer))
+            
+            A_temp = math.pi * inner_d * total_length
+            mass_flow_per_p = flow_rate_m3s_per_p * density
+            NTU_temp = U_temp * A_temp / (mass_flow_per_p * specific_heat)
+            eff_temp = 1 - math.exp(-NTU_temp)
+            final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp)
+            
+            # 地下水温度上昇の計算（各配管サイズごと）
+            if consider_groundwater_temp_rise:
+                # 熱交換量の計算 [W]
+                heat_rate_temp = mass_flow_per_p * n_pipes * specific_heat * (initial_temp - final_t)
+                
+                # 地下水の体積計算（ボーリング孔内のみ）
+                boring_volume_temp = math.pi * (boring_diameter_mm / 2000) ** 2 * pipe_length  # m³
+                # 配管の総体積（U字管なので往復分で2倍）
+                pipe_total_volume_temp = math.pi * (outer_d / 2) ** 2 * pipe_length * n_pipes * 2  # m³
+                # 地下水体積
+                groundwater_volume_temp = boring_volume_temp - pipe_total_volume_temp  # m³
+                groundwater_mass_temp = groundwater_volume_temp * density  # kg
+                
+                # 循環方式に応じた計算
+                if consider_circulation and circulation_type == "同じ水を循環":
+                    # 同じ水を循環させる場合の計算（反復計算）
+                    time_step = 60  # 1分ごとの計算
+                    num_steps = int(operation_hours * 3600 / time_step)
+                    
+                    current_inlet_temp = initial_temp
+                    current_ground_temp = ground_temp
+                    
+                    for i in range(num_steps):
+                        # 現在の温度での熱交換計算
+                        current_effectiveness = 1 - math.exp(-NTU_temp)
+                        current_outlet_temp = current_inlet_temp - current_effectiveness * (current_inlet_temp - current_ground_temp)
+                        
+                        # 熱交換量
+                        current_heat_rate = mass_flow_per_p * n_pipes * specific_heat * (current_inlet_temp - current_outlet_temp)
+                        
+                        # 地下水温度上昇
+                        if groundwater_mass_temp > 0:
+                            delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass_temp * specific_heat)
+                            current_ground_temp += delta_ground_temp
+                            # 物理的制約：地下水温度は入口温度を超えない
+                            current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit, current_inlet_temp)
+                        
+                        # 次のステップの入口温度は現在の出口温度
+                        current_inlet_temp = current_outlet_temp
+                    
+                    # 最終結果
+                    final_t = current_outlet_temp
+                    effective_ground_temp_local = current_ground_temp
+                    gw_temp_rise = current_ground_temp - ground_temp
+                    
+                else:
+                    # 新しい水を連続供給する場合、または循環を考慮しない場合
+                    # 循環を考慮しない場合は1回の通水時間を計算
+                    if not consider_circulation:
+                        total_pipe_length_temp = pipe_length * 2  # U字管往復
+                        transit_time_seconds_temp = total_pipe_length_temp / vel  # 秒
+                        operation_hours_temp = transit_time_seconds_temp / 3600  # 時間に変換
+                    else:
+                        operation_hours_temp = operation_hours
+                        
+                    operation_time = operation_hours_temp * 3600  # 秒
+                    if groundwater_mass_temp > 0:
+                        gw_temp_rise = (heat_rate_temp * operation_time) / (groundwater_mass_temp * specific_heat)
+                        # 物理的制約：地下水温度は入口温度を超えない
+                        max_possible_rise = initial_temp - ground_temp
+                        gw_temp_rise = min(gw_temp_rise, temp_rise_limit, max_possible_rise)
+                    else:
+                        gw_temp_rise = 0.0
+                    
+                    # 実効地下水温度で再計算
+                    effective_ground_temp_local = ground_temp + gw_temp_rise
+                    final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp_local)
+            else:
+                gw_temp_rise = 0.0
+            
+            pipe_comparison.append({
+                "管径": pipe_size,
+                "本数": n_pipes,
+                "出口温度(℃)": round(final_t, 1),
+                "効率(%)": round(eff_temp * 100, 1),
+                "流速(m/s)": round(vel, 3),
+                "レイノルズ数": int(re),
+                "h_i(W/m²K)": int(h),
+                "U(W/m²K)": round(U_temp, 1),
+                "NTU": round(NTU_temp, 3)
+            })
+
+        df = pd.DataFrame(pipe_comparison)
+        
+        # 管径別比較結果
+        st.subheader("📋 管径別比較結果")
+        st.dataframe(df, use_container_width=True)
+        
+        # 警告表示
+        if warnings_list:
+            st.error("⚠️ 配管面積に関する警告")
+            for warning in warnings_list:
+                st.warning(warning)
+
+        # グラフ表示
+        st.header("📊 視覚化")
+
+        # 管径別効率比較
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=("管径別効率", "管径別出口温度"),
+            specs=[[{"secondary_y": False}, {"secondary_y": False}]]
+        )
+
+        # 効率グラフ
+        fig.add_trace(
+            go.Bar(x=df["管径"], y=df["効率(%)"], name="効率", marker_color="blue"),
+            row=1, col=1
+        )
+
+        # 温度グラフ
+        fig.add_trace(
+            go.Scatter(x=df["管径"], y=df["出口温度(℃)"], mode="lines+markers", 
+                       name="出口温度", line=dict(color="red")),
+            row=1, col=2
+        )
+
+        fig.update_layout(height=400, showlegend=True)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # 最適配管の提案
+        st.header("🎆 最適配管の分析")
+        
+        # 最も効率が高い配管を特定
+        best_pipe = df.loc[df["効率(%)"].idxmax()]
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.success(f"🥇 最適配管: {best_pipe['管径']}")
+            st.metric("出口温度", f"{best_pipe['出口温度(℃)']}℃")
         
         with col2:
-            if st.button("🧮 計算実行", type="primary", use_container_width=True, key="multi_calc_btn"):
-                st.session_state.multi_calculate_flag = True
+            st.metric("効率", f"{best_pipe['効率(%)']}%")
+            st.metric("本数", f"{best_pipe['本数']}本")
         
         with col3:
-            if st.button("🔄 設定を初期化", type="secondary", use_container_width=True, key="multi_reset_btn"):
-                # 複数配管比較に関連するsession_stateの値を削除
-                keys_to_delete = [
-                    "multi_target_value", "multi_initial_value", "multi_flow_value", "multi_ground_value",
-                    "multi_length_value", "multi_boring_diameter", "multi_pipe_material",
-                    "multi_consider_groundwater_temp_rise", "multi_consider_circulation",
-                    "multi_circulation_type", "multi_operation_value", "multi_limit_value", "multi_calculate_flag",
-                    "multi_15A", "multi_20A", "multi_25A", "multi_32A", "multi_40A", "multi_50A", "multi_65A", "multi_80A"
-                ]
-                for key in keys_to_delete:
-                    if key in st.session_state:
-                        del st.session_state[key]
-                st.rerun()
-        
-        # 計算フラグの初期化（複数配管比較用）
-        if "multi_calculate_flag" not in st.session_state:
-            st.session_state.multi_calculate_flag = False
-        
-        # 計算結果のタイトル
-        st.header("📊 管径別性能比較")
-        
-        # 計算が実行されていない場合のメッセージ
-        if not st.session_state.multi_calculate_flag:
-            st.info("💡 計算条件を設定して「計算実行」ボタンをクリックしてください。")
-        else:
-            # 計算が実行された場合のみ、以下の処理を行う
-            # 初期計算用の地下水温度
-            effective_ground_temp = ground_temp
-            groundwater_temp_rise = 0.0  # 初期値
-        
-            # 平均温度の計算
-            avg_temp = (initial_temp + effective_ground_temp) / 2
-            
-            # 温度依存の物性値計算
-            if avg_temp <= 20:
-                kinematic_viscosity = 1.004e-6
-                water_thermal_conductivity = 0.598
-                prandtl = 7.01
-                density = 998.2
-                specific_heat = 4182
-            elif avg_temp <= 25:
-                t_ratio = (avg_temp - 20) / 5
-                kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
-                water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
-                prandtl = 7.01 - (7.01 - 6.13) * t_ratio
-                density = 998.2 - (998.2 - 997.0) * t_ratio
-                specific_heat = 4182 - (4182 - 4179) * t_ratio
-            else:
-                kinematic_viscosity = 0.801e-6
-                water_thermal_conductivity = 0.615
-                prandtl = 5.42
-                density = 995.6
-                specific_heat = 4178
-            
-            pipe_thermal_cond = thermal_conductivity[pipe_material]
-            h_outer = 300
-            total_length = pipe_length * 2
-            boring_area = math.pi * (boring_diameter_mm / 2) ** 2  # mm²
-            
-            # 管径別比較データの計算
-            pipe_comparison = []
-            warnings_list = []  # 警告メッセージ用リスト
-            
-            for pipe_size in ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"]:
-                # 各管径での計算
-                inner_d = pipe_specs[pipe_size] / 1000
-                area = math.pi * (inner_d / 2) ** 2
-                n_pipes = pipe_counts_user[pipe_size]
-                flow_per_p = flow_rate / n_pipes
-                flow_rate_m3s_per_p = flow_per_p / 60000
-                vel = flow_rate_m3s_per_p / area
-                re = vel * inner_d / kinematic_viscosity
-                
-                if re < 2300:
-                    nu = 3.66
-                else:
-                    nu = 0.023 * (re ** 0.8) * (prandtl ** 0.3)
-                
-                h = nu * water_thermal_conductivity / inner_d
-                
-                # 外径データ（JIS規格）
-                pipe_outer_diameters_comp = {
-                    "15A": 21.7 / 1000,  # m
-                    "20A": 27.2 / 1000,
-                    "25A": 34.0 / 1000,
-                    "32A": 42.7 / 1000,
-                    "40A": 48.6 / 1000,
-                    "50A": 60.5 / 1000,
-                    "65A": 76.3 / 1000,
-                    "80A": 89.1 / 1000
-                }
-                
-                outer_d = pipe_outer_diameters_comp[pipe_size]
-                
-                # 配管面積と掘削径の検証
-                total_pipe_area_temp = n_pipes * math.pi * (outer_d / 2) ** 2 * 1000000  # mm²
-                if total_pipe_area_temp > boring_area * 0.8:
-                    warnings_list.append(f"{pipe_size}: 配管総面積が掘削径の80%を超過 ({total_pipe_area_temp/boring_area*100:.1f}%)")
-                
-                # 総括熱伝達係数（内径基準）
-                U_temp = 1 / (1/h + 
-                             inner_d/(2*pipe_thermal_cond) * math.log(outer_d/inner_d) + 
-                             inner_d/(outer_d*h_outer))
-                
-                A_temp = math.pi * inner_d * total_length
-                mass_flow_per_p = flow_rate_m3s_per_p * density
-                NTU_temp = U_temp * A_temp / (mass_flow_per_p * specific_heat)
-                eff_temp = 1 - math.exp(-NTU_temp)
-                final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp)
-                
-                # 地下水温度上昇の計算（各配管サイズごと）
-                if consider_groundwater_temp_rise:
-                    # 熱交換量の計算 [W]
-                    heat_rate_temp = mass_flow_per_p * n_pipes * specific_heat * (initial_temp - final_t)
-                    
-                    # 地下水の体積計算（ボーリング孔内のみ）
-                    boring_volume_temp = math.pi * (boring_diameter_mm / 2000) ** 2 * pipe_length  # m³
-                    # 配管の総体積（U字管なので往復分で2倍）
-                    pipe_total_volume_temp = math.pi * (outer_d / 2) ** 2 * pipe_length * n_pipes * 2  # m³
-                    # 地下水体積
-                    groundwater_volume_temp = boring_volume_temp - pipe_total_volume_temp  # m³
-                    groundwater_mass_temp = groundwater_volume_temp * density  # kg
-                    
-                    # 循環方式に応じた計算
-                    if consider_circulation and circulation_type == "同じ水を循環":
-                        # 同じ水を循環させる場合の計算（反復計算）
-                        time_step = 60  # 1分ごとの計算
-                        num_steps = int(operation_hours * 3600 / time_step)
-                        
-                        current_inlet_temp = initial_temp
-                        current_ground_temp = ground_temp
-                        
-                        for i in range(num_steps):
-                            # 現在の温度での熱交換計算
-                            current_effectiveness = 1 - math.exp(-NTU_temp)
-                            current_outlet_temp = current_inlet_temp - current_effectiveness * (current_inlet_temp - current_ground_temp)
-                            
-                            # 熱交換量
-                            current_heat_rate = mass_flow_per_p * n_pipes * specific_heat * (current_inlet_temp - current_outlet_temp)
-                            
-                            # 地下水温度上昇
-                            if groundwater_mass_temp > 0:
-                                delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass_temp * specific_heat)
-                                current_ground_temp += delta_ground_temp
-                                # 物理的制約：地下水温度は入口温度を超えない
-                                current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit, current_inlet_temp)
-                            
-                            # 次のステップの入口温度は現在の出口温度
-                            current_inlet_temp = current_outlet_temp
-                        
-                        # 最終結果
-                        final_t = current_outlet_temp
-                        effective_ground_temp_local = current_ground_temp
-                        gw_temp_rise = current_ground_temp - ground_temp
-                        
-                    else:
-                        # 新しい水を連続供給する場合、または循環を考慮しない場合
-                        # 循環を考慮しない場合は1回の通水時間を計算
-                        if not consider_circulation:
-                            total_pipe_length_temp = pipe_length * 2  # U字管往復
-                            transit_time_seconds_temp = total_pipe_length_temp / vel  # 秒
-                            operation_hours_temp = transit_time_seconds_temp / 3600  # 時間に変換
-                        else:
-                            operation_hours_temp = operation_hours
-                            
-                        operation_time = operation_hours_temp * 3600  # 秒
-                        if groundwater_mass_temp > 0:
-                            gw_temp_rise = (heat_rate_temp * operation_time) / (groundwater_mass_temp * specific_heat)
-                            # 物理的制約：地下水温度は入口温度を超えない
-                            max_possible_rise = initial_temp - ground_temp
-                            gw_temp_rise = min(gw_temp_rise, temp_rise_limit, max_possible_rise)
-                        else:
-                            gw_temp_rise = 0.0
-                        
-                        # 実効地下水温度で再計算
-                        effective_ground_temp_local = ground_temp + gw_temp_rise
-                        final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp_local)
-                else:
-                    gw_temp_rise = 0.0
-                
-                pipe_comparison.append({
-                    "管径": pipe_size,
-                    "本数": n_pipes,
-                    "出口温度(℃)": round(final_t, 1),
-                    "効率(%)": round(eff_temp * 100, 1),
-                    "流速(m/s)": round(vel, 3),
-                    "レイノルズ数": int(re),
-                    "h_i(W/m²K)": int(h),
-                    "U(W/m²K)": round(U_temp, 1),
-                    "NTU": round(NTU_temp, 3)
-                })
+            st.metric("流速", f"{best_pipe['流速(m/s)']} m/s")
+            st.metric("NTU", f"{best_pipe['NTU']}")
 
-            df = pd.DataFrame(pipe_comparison)
-            
-            # 管径別比較結果
-            st.subheader("📋 管径別比較結果")
-            st.dataframe(df, use_container_width=True)
-            
-            # 警告表示
-            if warnings_list:
-                st.error("⚠️ 配管面積に関する警告")
-                for warning in warnings_list:
-                    st.warning(warning)
-
-            # グラフ表示
-            st.header("📊 視覚化")
-
-            # 管径別効率比較
-            fig = make_subplots(
-                rows=1, cols=2,
-                subplot_titles=("管径別効率", "管径別出口温度"),
-                specs=[[{"secondary_y": False}, {"secondary_y": False}]]
-            )
-
-            # 効率グラフ
-            fig.add_trace(
-                go.Bar(x=df["管径"], y=df["効率(%)"], name="効率", marker_color="blue"),
-                row=1, col=1
-            )
-
-            # 温度グラフ
-            fig.add_trace(
-                go.Scatter(x=df["管径"], y=df["出口温度(℃)"], mode="lines+markers", 
-                           name="出口温度", line=dict(color="red")),
-                row=1, col=2
-            )
-
-            fig.update_layout(height=400, showlegend=True)
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # 最適配管の提案
-            st.header("🎆 最適配管の分析")
-            
-            # 最も効率が高い配管を特定
-            best_pipe = df.loc[df["効率(%)"].idxmax()]
-            
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.success(f"🥇 最適配管: {best_pipe['管径']}")
-                st.metric("出口温度", f"{best_pipe['出口温度(℃)']}℃")
-            
-            with col2:
-                st.metric("効率", f"{best_pipe['効率(%)']}%")
-                st.metric("本数", f"{best_pipe['本数']}本")
-            
-            with col3:
-                st.metric("流速", f"{best_pipe['流速(m/s)']} m/s")
-                st.metric("NTU", f"{best_pipe['NTU']}")
-
-            # フッター
-            st.markdown("---")
-            st.markdown("**開発者**: dobocreate | **バージョン**: 1.2.0 | **更新**: 2025-01-06")
+        # フッター
+        st.markdown("---")
+        st.markdown("**開発者**: dobocreate | **バージョン**: 1.2.0 | **更新**: 2025-01-06")
 
 elif page == "理論解説":
     # ページ遷移時のスクロールリセット用
     if st.session_state.page_changed:
-            st.empty()
+        st.empty()
     
     st.title("📚 地中熱交換の理論解説")
     st.markdown("本シミュレーターで適用している熱交換理論の詳細な解説")
@@ -1418,347 +1346,347 @@ elif page == "理論解説":
     
     # ステップ1
     with st.expander("📌 ステップ1: 入力データの処理と物性値の決定"):
-            st.markdown("""
-            ### 1-1. 平均温度の計算
-            """)
-            st.latex(r"T_{avg} = \frac{T_{initial} + T_{ground}}{2}")
-            st.markdown("""
-            **記号の説明：**
-            - **Tavg**: 平均温度 [℃]
-            - **Tinitial**: 入口温度 [℃]
-            - **Tground**: 地下水温度 [℃]
-            """)
-            
-            st.markdown("""
-            ### 1-2. 物性値の決定（線形補間）
-            温度範囲に応じて以下の物性値を設定：
-            - **動粘度** ν [m²/s]
-            - **熱伝導率** k [W/m·K]
-            - **プラントル数** Pr [-]
-            - **密度** ρ [kg/m³]
-            - **比熱** cp [J/kg·K]
-            
-            ### 1-3. 流量計算
-            """)
-            st.latex(r"\dot{m} = \rho \cdot Q_{volume}")
-            st.markdown("""
-            **記号の説明：**
-            - **ṁ**: 質量流量 [kg/s]
-            - **ρ**: 密度 [kg/m³]
-            - **Qvolume**: 体積流量 [m³/s] = (流量[L/min] / 60000)
-            """)
+        st.markdown("""
+        ### 1-1. 平均温度の計算
+        """)
+        st.latex(r"T_{avg} = \frac{T_{initial} + T_{ground}}{2}")
+        st.markdown("""
+        **記号の説明：**
+        - **Tavg**: 平均温度 [℃]
+        - **Tinitial**: 入口温度 [℃]
+        - **Tground**: 地下水温度 [℃]
+        """)
+        
+        st.markdown("""
+        ### 1-2. 物性値の決定（線形補間）
+        温度範囲に応じて以下の物性値を設定：
+        - **動粘度** ν [m²/s]
+        - **熱伝導率** k [W/m·K]
+        - **プラントル数** Pr [-]
+        - **密度** ρ [kg/m³]
+        - **比熱** cp [J/kg·K]
+        
+        ### 1-3. 流量計算
+        """)
+        st.latex(r"\dot{m} = \rho \cdot Q_{volume}")
+        st.markdown("""
+        **記号の説明：**
+        - **ṁ**: 質量流量 [kg/s]
+        - **ρ**: 密度 [kg/m³]
+        - **Qvolume**: 体積流量 [m³/s] = (流量[L/min] / 60000)
+        """)
     
     # ステップ2
     with st.expander("📌 ステップ2: 管内流動状態の判定"):
-            st.markdown("""
-            ### 2-1. 流速の計算
-            """)
-            st.latex(r"v = \frac{Q_{volume}}{A} = \frac{Q_{volume}}{\pi (D/2)^2}")
-            st.markdown("""
-            **記号の説明：**
-            - **v**: 流速 [m/s]
-            - **Qvolume**: 1本あたりの体積流量 [m³/s]
-            - **A**: 配管断面積 [m²]
-            - **D**: 配管内径 [m]
-            - **π**: 円周率 ≈ 3.14159
-            """)
-            
-            st.markdown("""
-            ### 2-2. レイノルズ数の計算
-            """)
-            st.latex(r"Re = \frac{vD}{\nu}")
-            st.markdown("""
-            **記号の説明：**
-            - **Re**: レイノルズ数 [-]（無次元）
-            - **v**: 流速 [m/s]
-            - **D**: 配管内径 [m]
-            - **ν**: 動粘度 [m²/s]
-            """)
-            
-            st.markdown("""
-            - **Re < 2300**: 層流 → Nu = 3.66
-            - **Re ≥ 2300**: 乱流 → Dittus-Boelter式を使用
-            """)
+        st.markdown("""
+        ### 2-1. 流速の計算
+        """)
+        st.latex(r"v = \frac{Q_{volume}}{A} = \frac{Q_{volume}}{\pi (D/2)^2}")
+        st.markdown("""
+        **記号の説明：**
+        - **v**: 流速 [m/s]
+        - **Qvolume**: 1本あたりの体積流量 [m³/s]
+        - **A**: 配管断面積 [m²]
+        - **D**: 配管内径 [m]
+        - **π**: 円周率 ≈ 3.14159
+        """)
+        
+        st.markdown("""
+        ### 2-2. レイノルズ数の計算
+        """)
+        st.latex(r"Re = \frac{vD}{\nu}")
+        st.markdown("""
+        **記号の説明：**
+        - **Re**: レイノルズ数 [-]（無次元）
+        - **v**: 流速 [m/s]
+        - **D**: 配管内径 [m]
+        - **ν**: 動粘度 [m²/s]
+        """)
+        
+        st.markdown("""
+        - **Re < 2300**: 層流 → Nu = 3.66
+        - **Re ≥ 2300**: 乱流 → Dittus-Boelter式を使用
+        """)
     
     # ステップ3
     with st.expander("📌 ステップ3: 熱伝達係数の計算"):
-            st.markdown("""
-            ### 3-1. ヌセルト数の決定
-            
-            **層流の場合（Re < 2300）：**
-            """)
-            st.latex(r"Nu = 3.66")
-            st.markdown("""
-            **記号の説明：**
-            - **Nu**: ヌセルト数 [-]（無次元）
-            """)
-            
-            st.markdown("""
-            **乱流の場合（Re ≥ 2300）：**
-            """)
-            st.latex(r"Nu = 0.023 \cdot Re^{0.8} \cdot Pr^{0.3}")
-            st.markdown("""
-            **記号の説明：**
-            - **Nu**: ヌセルト数 [-]
-            - **Re**: レイノルズ数 [-]
-            - **Pr**: プラントル数 [-]
-            - **0.023, 0.8, 0.3**: 実験的に決定された定数
-            """)
-            
-            st.markdown("""
-            ### 3-2. 管内側熱伝達係数
-            """)
-            st.latex(r"h_i = \frac{Nu \cdot k_{water}}{D}")
-            st.markdown("""
-            **記号の説明：**
-            - **hi**: 管内側熱伝達係数 [W/m²·K]
-            - **Nu**: ヌセルト数 [-]
-            - **kwater**: 水の熱伝導率 [W/m·K]
-            - **D**: 配管内径 [m]
-            """)
-            
-            st.markdown("""
-            ### 3-3. 管外側熱伝達係数
-            - ho = 300 [W/m²·K]（自然対流を仮定）
-            """)
+        st.markdown("""
+        ### 3-1. ヌセルト数の決定
+        
+        **層流の場合（Re < 2300）：**
+        """)
+        st.latex(r"Nu = 3.66")
+        st.markdown("""
+        **記号の説明：**
+        - **Nu**: ヌセルト数 [-]（無次元）
+        """)
+        
+        st.markdown("""
+        **乱流の場合（Re ≥ 2300）：**
+        """)
+        st.latex(r"Nu = 0.023 \cdot Re^{0.8} \cdot Pr^{0.3}")
+        st.markdown("""
+        **記号の説明：**
+        - **Nu**: ヌセルト数 [-]
+        - **Re**: レイノルズ数 [-]
+        - **Pr**: プラントル数 [-]
+        - **0.023, 0.8, 0.3**: 実験的に決定された定数
+        """)
+        
+        st.markdown("""
+        ### 3-2. 管内側熱伝達係数
+        """)
+        st.latex(r"h_i = \frac{Nu \cdot k_{water}}{D}")
+        st.markdown("""
+        **記号の説明：**
+        - **hi**: 管内側熱伝達係数 [W/m²·K]
+        - **Nu**: ヌセルト数 [-]
+        - **kwater**: 水の熱伝導率 [W/m·K]
+        - **D**: 配管内径 [m]
+        """)
+        
+        st.markdown("""
+        ### 3-3. 管外側熱伝達係数
+        - ho = 300 [W/m²·K]（自然対流を仮定）
+        """)
     
     # ステップ4
     with st.expander("📌 ステップ4: 総括熱伝達係数の計算"):
-            st.markdown("""
-            ### 4-1. 内径基準の総括熱伝達係数
-            """)
-            st.latex(r"U_i = \frac{1}{\frac{1}{h_i} + \frac{r_i \ln(r_o/r_i)}{k_{pipe}} + \frac{r_i}{r_o h_o}}")
-            st.markdown("""
-            **記号の説明：**
-            - **Ui**: 内径基準の総括熱伝達係数 [W/m²·K]
-            - **hi**: 管内側熱伝達係数 [W/m²·K]
-            - **ri**: 配管内半径 [m]
-            - **ro**: 配管外半径 [m]
-            - **kpipe**: 配管材の熱伝導率 [W/m·K]
-            - **ho**: 管外側熱伝達係数 [W/m²·K]
-            """)
-            
-            st.markdown("""
-            各項の物理的意味：
-            - **第1項**: 管内側の対流熱抵抗
-            - **第2項**: 管壁の伝導熱抵抗
-            - **第3項**: 管外側の対流熱抵抗
-            
-            ### 4-2. 伝熱面積の計算
-            """)
-            st.latex(r"A = \pi D L_{total}")
-            st.markdown("""
-            **記号の説明：**
-            - **A**: 伝熱面積 [m²]
-            - **π**: 円周率 ≈ 3.14159
-            - **D**: 配管内径 [m]
-            - **Ltotal**: U字管の総延長 = 2 × 管浸水距離 [m]
-            """)
+        st.markdown("""
+        ### 4-1. 内径基準の総括熱伝達係数
+        """)
+        st.latex(r"U_i = \frac{1}{\frac{1}{h_i} + \frac{r_i \ln(r_o/r_i)}{k_{pipe}} + \frac{r_i}{r_o h_o}}")
+        st.markdown("""
+        **記号の説明：**
+        - **Ui**: 内径基準の総括熱伝達係数 [W/m²·K]
+        - **hi**: 管内側熱伝達係数 [W/m²·K]
+        - **ri**: 配管内半径 [m]
+        - **ro**: 配管外半径 [m]
+        - **kpipe**: 配管材の熱伝導率 [W/m·K]
+        - **ho**: 管外側熱伝達係数 [W/m²·K]
+        """)
+        
+        st.markdown("""
+        各項の物理的意味：
+        - **第1項**: 管内側の対流熱抵抗
+        - **第2項**: 管壁の伝導熱抵抗
+        - **第3項**: 管外側の対流熱抵抗
+        
+        ### 4-2. 伝熱面積の計算
+        """)
+        st.latex(r"A = \pi D L_{total}")
+        st.markdown("""
+        **記号の説明：**
+        - **A**: 伝熱面積 [m²]
+        - **π**: 円周率 ≈ 3.14159
+        - **D**: 配管内径 [m]
+        - **Ltotal**: U字管の総延長 = 2 × 管浸水距離 [m]
+        """)
     
     # ステップ5
     with st.expander("📌 ステップ5: NTU-ε法による熱交換計算"):
-            st.markdown("""
-            ### 5-1. 伝熱単位数（NTU）の計算
-            """)
-            st.latex(r"NTU = \frac{UA}{\dot{m}c_p}")
-            st.markdown("""
-            **記号の説明：**
-            - **NTU**: 伝熱単位数 [-]（無次元）
-            - **U**: 総括熱伝達係数 [W/m²·K]
-            - **A**: 伝熱面積 [m²]
-            - **ṁ**: 質量流量 [kg/s]
-            - **cp**: 比熱 [J/kg·K]
-            """)
-            
-            st.markdown("""
-            ### 5-2. 熱交換効率の計算
-            """)
-            st.latex(r"\varepsilon = 1 - e^{-NTU}")
-            st.markdown("""
-            **記号の説明：**
-            - **ε**: 熱交換効率 [-]（0～1の値）
-            - **e**: 自然対数の底 ≈ 2.718
-            - **NTU**: 伝熱単位数 [-]
-            """)
-            
-            st.markdown("""
-            - 対向流熱交換器で熱容量比Cr = 0の場合の理論解
-            - 地下水側の熱容量が非常に大きいと仮定
-            
-            ### 5-3. 出口温度の計算
-            """)
-            st.latex(r"T_{out} = T_{in} - \varepsilon(T_{in} - T_{ground})")
-            st.markdown("""
-            **記号の説明：**
-            - **Tout**: 出口温度 [℃]
-            - **Tin**: 入口温度 [℃]
-            - **Tground**: 地下水温度 [℃]
-            - **ε**: 熱交換効率 [-]
-            """)
+        st.markdown("""
+        ### 5-1. 伝熱単位数（NTU）の計算
+        """)
+        st.latex(r"NTU = \frac{UA}{\dot{m}c_p}")
+        st.markdown("""
+        **記号の説明：**
+        - **NTU**: 伝熱単位数 [-]（無次元）
+        - **U**: 総括熱伝達係数 [W/m²·K]
+        - **A**: 伝熱面積 [m²]
+        - **ṁ**: 質量流量 [kg/s]
+        - **cp**: 比熱 [J/kg·K]
+        """)
+        
+        st.markdown("""
+        ### 5-2. 熱交換効率の計算
+        """)
+        st.latex(r"\varepsilon = 1 - e^{-NTU}")
+        st.markdown("""
+        **記号の説明：**
+        - **ε**: 熱交換効率 [-]（0～1の値）
+        - **e**: 自然対数の底 ≈ 2.718
+        - **NTU**: 伝熱単位数 [-]
+        """)
+        
+        st.markdown("""
+        - 対向流熱交換器で熱容量比Cr = 0の場合の理論解
+        - 地下水側の熱容量が非常に大きいと仮定
+        
+        ### 5-3. 出口温度の計算
+        """)
+        st.latex(r"T_{out} = T_{in} - \varepsilon(T_{in} - T_{ground})")
+        st.markdown("""
+        **記号の説明：**
+        - **Tout**: 出口温度 [℃]
+        - **Tin**: 入口温度 [℃]
+        - **Tground**: 地下水温度 [℃]
+        - **ε**: 熱交換効率 [-]
+        """)
     
     # ステップ6
     with st.expander("📌 ステップ6: 熱交換量の計算"):
-            st.markdown("""
-            ### 6-1. 総熱交換量
-            """)
-            st.latex(r"Q = \dot{m} \cdot c_p \cdot (T_{in} - T_{out})")
-            st.markdown("""
-            **記号の説明：**
-            - **Q**: 総熱交換量 [W]
-            - **ṁ**: 総質量流量 [kg/s]
-            - **cp**: 比熱 [J/kg·K]
-            - **Tin**: 入口温度 [℃]
-            - **Tout**: 出口温度 [℃]
-            """)
-            
-            st.markdown("""
-            - 温度差から実際の熱移動量を計算
-            
-            ### 6-2. 熱流束の確認
-            """)
-            st.latex(r"q = \frac{Q}{A}")
-            st.markdown("""
-            **記号の説明：**
-            - **q**: 熱流束 [W/m²]
-            - **Q**: 総熱交換量 [W]
-            - **A**: 伝熱面積 [m²]
-            """)
-            
-            st.markdown("""
-            - 単位面積あたりの熱流量
-            - 設計の妥当性確認に使用
-            """)
+        st.markdown("""
+        ### 6-1. 総熱交換量
+        """)
+        st.latex(r"Q = \dot{m} \cdot c_p \cdot (T_{in} - T_{out})")
+        st.markdown("""
+        **記号の説明：**
+        - **Q**: 総熱交換量 [W]
+        - **ṁ**: 総質量流量 [kg/s]
+        - **cp**: 比熱 [J/kg·K]
+        - **Tin**: 入口温度 [℃]
+        - **Tout**: 出口温度 [℃]
+        """)
+        
+        st.markdown("""
+        - 温度差から実際の熱移動量を計算
+        
+        ### 6-2. 熱流束の確認
+        """)
+        st.latex(r"q = \frac{Q}{A}")
+        st.markdown("""
+        **記号の説明：**
+        - **q**: 熱流束 [W/m²]
+        - **Q**: 総熱交換量 [W]
+        - **A**: 伝熱面積 [m²]
+        """)
+        
+        st.markdown("""
+        - 単位面積あたりの熱流量
+        - 設計の妥当性確認に使用
+        """)
     
     # ステップ7
     with st.expander("📌 ステップ7: 地下水温度上昇の計算（オプション）"):
-            st.markdown("""
-            ### 7-1. 地下水体積の計算
-            """)
-            st.latex(r"V_{gw} = V_{boring} - V_{pipes}")
-            st.markdown("""
-            **記号の説明：**
-            - **Vgw**: 地下水体積 [m³]
-            - **Vboring**: ボーリング孔体積 [m³] = π(Dboring²/4)L
-            - **Vpipes**: 配管総体積 [m³]（U字管なので2倍）
-            - **Dboring**: ボーリング孔径 [m]
-            - **L**: 管浸水距離 [m]
-            """)
-            
-            st.markdown("""
-            ### 7-2. 地下水質量
-            """)
-            st.latex(r"m_{gw} = \rho_{water} \cdot V_{gw}")
-            st.markdown("""
-            **記号の説明：**
-            - **mgw**: 地下水質量 [kg]
-            - **ρwater**: 水の密度 [kg/m³]
-            - **Vgw**: 地下水体積 [m³]
-            """)
-            
-            st.markdown("""
-            ### 7-3. 温度上昇の計算
-            
-            **A. 循環なしの場合（1回通水）：**
-            """)
-            st.latex(r"t_{transit} = \frac{L_{total}}{v}")
-            st.latex(r"\Delta T_{gw} = \frac{Q \cdot t_{transit}}{m_{gw} \cdot c_p}")
-            st.markdown("""
-            **記号の説明：**
-            - **ttransit**: 通水時間 [s]
-            - **Ltotal**: U字管の総延長 [m]
-            - **v**: 流速 [m/s]
-            - **ΔTgw**: 地下水温度上昇 [K]
-            - **Q**: 熱交換量 [W]
-            - **mgw**: 地下水質量 [kg]
-            - **cp**: 比熱 [J/kg·K]
-            """)
-            
-            st.markdown("""
-            **B. 循環ありの場合（連続運転）：**
-            
-            時間ステップごとに以下を反復：
-            1. 現在の地下水温度でNTU計算
-            2. 効率εと出口温度を計算
-            3. 熱交換量Qを計算
-            4. 地下水温度上昇ΔTを計算
-            5. **物理的制約を適用**：地下水温度 ≤ 現在の入口温度
-            6. 次ステップの入口温度 = 現在の出口温度
-            
-            **温度収束の特性：**
-            - 「同じ水を循環」モードでは、循環水温度と地下水温度が最終的に熱平衡状態に収束
-            - 収束温度は初期条件と熱容量比によって決定
-            - 「新しい水を連続供給」モードでは、地下水温度は入口温度に漸近
-            
-            ### 7-4. 温度上昇の制限（物理的制約）
-            
-            **熱力学第二法則による制約：**
-            地下水温度は入口温度を超えることはできません。
-            """)
-            st.latex(r"T_{ground,max} = T_{in}")
-            st.latex(r"\Delta T_{gw,max} = T_{in} - T_{ground,initial}")
-            
-            st.markdown("""
-            **実際の制限値：**
-            """)
-            st.latex(r"\Delta T_{gw,limited} = \min(\Delta T_{gw}, \Delta T_{limit}, \Delta T_{gw,max})")
-            st.markdown("""
-            **記号の説明：**
-            - **Tground,max**: 地下水の物理的上限温度 [℃]
-            - **Tin**: 入口温度 [℃]
-            - **ΔTgw,max**: 物理的に可能な最大温度上昇 [K]
-            - **ΔTgw,limited**: 制限後の地下水温度上昇 [K]
-            - **ΔTgw**: 計算された地下水温度上昇 [K]
-            - **ΔTlimit**: ユーザー設定の上限値 [K]（5-20℃）
-            - **min()**: 最小値を選択する関数
-            
-            ⚠️ **重要**：30℃の水で35℃まで地下水温度が上昇するような非物理的な結果は起こりません。
-            """)
+        st.markdown("""
+        ### 7-1. 地下水体積の計算
+        """)
+        st.latex(r"V_{gw} = V_{boring} - V_{pipes}")
+        st.markdown("""
+        **記号の説明：**
+        - **Vgw**: 地下水体積 [m³]
+        - **Vboring**: ボーリング孔体積 [m³] = π(Dboring²/4)L
+        - **Vpipes**: 配管総体積 [m³]（U字管なので2倍）
+        - **Dboring**: ボーリング孔径 [m]
+        - **L**: 管浸水距離 [m]
+        """)
+        
+        st.markdown("""
+        ### 7-2. 地下水質量
+        """)
+        st.latex(r"m_{gw} = \rho_{water} \cdot V_{gw}")
+        st.markdown("""
+        **記号の説明：**
+        - **mgw**: 地下水質量 [kg]
+        - **ρwater**: 水の密度 [kg/m³]
+        - **Vgw**: 地下水体積 [m³]
+        """)
+        
+        st.markdown("""
+        ### 7-3. 温度上昇の計算
+        
+        **A. 循環なしの場合（1回通水）：**
+        """)
+        st.latex(r"t_{transit} = \frac{L_{total}}{v}")
+        st.latex(r"\Delta T_{gw} = \frac{Q \cdot t_{transit}}{m_{gw} \cdot c_p}")
+        st.markdown("""
+        **記号の説明：**
+        - **ttransit**: 通水時間 [s]
+        - **Ltotal**: U字管の総延長 [m]
+        - **v**: 流速 [m/s]
+        - **ΔTgw**: 地下水温度上昇 [K]
+        - **Q**: 熱交換量 [W]
+        - **mgw**: 地下水質量 [kg]
+        - **cp**: 比熱 [J/kg·K]
+        """)
+        
+        st.markdown("""
+        **B. 循環ありの場合（連続運転）：**
+        
+        時間ステップごとに以下を反復：
+        1. 現在の地下水温度でNTU計算
+        2. 効率εと出口温度を計算
+        3. 熱交換量Qを計算
+        4. 地下水温度上昇ΔTを計算
+        5. **物理的制約を適用**：地下水温度 ≤ 現在の入口温度
+        6. 次ステップの入口温度 = 現在の出口温度
+        
+        **温度収束の特性：**
+        - 「同じ水を循環」モードでは、循環水温度と地下水温度が最終的に熱平衡状態に収束
+        - 収束温度は初期条件と熱容量比によって決定
+        - 「新しい水を連続供給」モードでは、地下水温度は入口温度に漸近
+        
+        ### 7-4. 温度上昇の制限（物理的制約）
+        
+        **熱力学第二法則による制約：**
+        地下水温度は入口温度を超えることはできません。
+        """)
+        st.latex(r"T_{ground,max} = T_{in}")
+        st.latex(r"\Delta T_{gw,max} = T_{in} - T_{ground,initial}")
+        
+        st.markdown("""
+        **実際の制限値：**
+        """)
+        st.latex(r"\Delta T_{gw,limited} = \min(\Delta T_{gw}, \Delta T_{limit}, \Delta T_{gw,max})")
+        st.markdown("""
+        **記号の説明：**
+        - **Tground,max**: 地下水の物理的上限温度 [℃]
+        - **Tin**: 入口温度 [℃]
+        - **ΔTgw,max**: 物理的に可能な最大温度上昇 [K]
+        - **ΔTgw,limited**: 制限後の地下水温度上昇 [K]
+        - **ΔTgw**: 計算された地下水温度上昇 [K]
+        - **ΔTlimit**: ユーザー設定の上限値 [K]（5-20℃）
+        - **min()**: 最小値を選択する関数
+        
+        ⚠️ **重要**：30℃の水で35℃まで地下水温度が上昇するような非物理的な結果は起こりません。
+        """)
     
     # ステップ8
     with st.expander("📌 ステップ8: 最終計算と結果の評価"):
-            st.markdown("""
-            ### 8-1. 最終出口温度の決定
-            
-            地下水温度上昇を考慮した場合：
-            """)
-            st.latex(r"T_{ground,final} = T_{ground,initial} + \Delta T_{gw}")
-            st.latex(r"T_{out,final} = T_{in} - \varepsilon(T_{in} - T_{ground,final})")
-            st.markdown("""
-            **記号の説明：**
-            - **Tground,final**: 最終地下水温度 [℃]
-            - **Tground,initial**: 初期地下水温度 [℃]
-            - **ΔTgw**: 地下水温度上昇 [K]
-            - **Tout,final**: 最終出口温度 [℃]
-            - **Tin**: 入口温度 [℃]
-            - **ε**: 熱交換効率 [-]
-            """)
-            
-            st.markdown("""
-            ### 8-2. 性能指標の評価
-            
-            **温度降下率：**
-            """)
-            st.latex(r"\eta_{temp} = \frac{T_{in} - T_{out}}{T_{in} - T_{ground}} \times 100\%")
-            st.markdown("""
-            **記号の説明：**
-            - **ηtemp**: 温度降下率 [%]
-            - **Tin**: 入口温度 [℃]
-            - **Tout**: 出口温度 [℃]
-            - **Tground**: 地下水温度 [℃]
-            """)
-            
-            st.markdown("""
-            **熱交換効率の確認：**
-            - NTU > 0.3: 実用的な性能
-            - ε > 0.5: 良好な熱交換
-            
-            ### 8-3. 目標温度との比較
-            
-            目標温度を下回った場合の対策提案：
-            - 配管セット本数の増加
-            - 管浸水距離の延長
-            - 流量の調整
-            """)
+        st.markdown("""
+        ### 8-1. 最終出口温度の決定
+        
+        地下水温度上昇を考慮した場合：
+        """)
+        st.latex(r"T_{ground,final} = T_{ground,initial} + \Delta T_{gw}")
+        st.latex(r"T_{out,final} = T_{in} - \varepsilon(T_{in} - T_{ground,final})")
+        st.markdown("""
+        **記号の説明：**
+        - **Tground,final**: 最終地下水温度 [℃]
+        - **Tground,initial**: 初期地下水温度 [℃]
+        - **ΔTgw**: 地下水温度上昇 [K]
+        - **Tout,final**: 最終出口温度 [℃]
+        - **Tin**: 入口温度 [℃]
+        - **ε**: 熱交換効率 [-]
+        """)
+        
+        st.markdown("""
+        ### 8-2. 性能指標の評価
+        
+        **温度降下率：**
+        """)
+        st.latex(r"\eta_{temp} = \frac{T_{in} - T_{out}}{T_{in} - T_{ground}} \times 100\%")
+        st.markdown("""
+        **記号の説明：**
+        - **ηtemp**: 温度降下率 [%]
+        - **Tin**: 入口温度 [℃]
+        - **Tout**: 出口温度 [℃]
+        - **Tground**: 地下水温度 [℃]
+        """)
+        
+        st.markdown("""
+        **熱交換効率の確認：**
+        - NTU > 0.3: 実用的な性能
+        - ε > 0.5: 良好な熱交換
+        
+        ### 8-3. 目標温度との比較
+        
+        目標温度を下回った場合の対策提案：
+        - 配管セット本数の増加
+        - 管浸水距離の延長
+        - 流量の調整
+        """)
     
     st.info("""
     💡 **計算の特徴**
@@ -1827,49 +1755,49 @@ elif page == "理論解説":
     col1, col2, col3 = st.columns(3)
     
     with col1:
-            st.markdown("**熱伝導（Conduction）**")
-            st.latex(r"q = -k \nabla T")
-            st.markdown("""
-            物質内部の分子振動による熱移動
-            - 固体内部の熱移動が主
-            - 配管壁での熱抵抗
-            
-            **記号の説明：**
-            - **q**: 熱流束 [W/m²]
-            - **k**: 熱伝導率 [W/m·K]
-            - **∇T**: 温度勾配 [K/m]
-            """)
+        st.markdown("**熱伝導（Conduction）**")
+        st.latex(r"q = -k \nabla T")
+        st.markdown("""
+        物質内部の分子振動による熱移動
+        - 固体内部の熱移動が主
+        - 配管壁での熱抵抗
+        
+        **記号の説明：**
+        - **q**: 熱流束 [W/m²]
+        - **k**: 熱伝導率 [W/m·K]
+        - **∇T**: 温度勾配 [K/m]
+        """)
     
     with col2:
-            st.markdown("**対流（Convection）**")
-            st.latex(r"q = h(T_s - T_\infty)")
-            st.markdown("""
-            流体の移動を伴う熱移動
-            - 管内流れでの主要な熱移動
-            - 強制対流と自然対流
-            
-            **記号の説明：**
-            - **q**: 熱流束 [W/m²]
-            - **h**: 熱伝達係数 [W/m²·K]
-            - **Ts**: 壁面温度 [K]
-            - **T∞**: 流体バルク温度 [K]
-            """)
+        st.markdown("**対流（Convection）**")
+        st.latex(r"q = h(T_s - T_\infty)")
+        st.markdown("""
+        流体の移動を伴う熱移動
+        - 管内流れでの主要な熱移動
+        - 強制対流と自然対流
+        
+        **記号の説明：**
+        - **q**: 熱流束 [W/m²]
+        - **h**: 熱伝達係数 [W/m²·K]
+        - **Ts**: 壁面温度 [K]
+        - **T∞**: 流体バルク温度 [K]
+        """)
     
     with col3:
-            st.markdown("**放射（Radiation）**")
-            st.latex(r"q = \epsilon \sigma (T_1^4 - T_2^4)")
-            st.markdown("""
-            電磁波による熱移動
-            - 本計算では無視
-            - 低温域では影響小
-            
-            **記号の説明：**
-            - **q**: 熱流束 [W/m²]
-            - **ε**: 放射率 [-]
-            - **σ**: Stefan-Boltzmann定数
-              (5.67×10⁻⁸ W/m²·K⁴)
-            - **T₁, T₂**: 絶対温度 [K]
-            """)
+        st.markdown("**放射（Radiation）**")
+        st.latex(r"q = \epsilon \sigma (T_1^4 - T_2^4)")
+        st.markdown("""
+        電磁波による熱移動
+        - 本計算では無視
+        - 低温域では影響小
+        
+        **記号の説明：**
+        - **q**: 熱流束 [W/m²]
+        - **ε**: 放射率 [-]
+        - **σ**: Stefan-Boltzmann定数
+          (5.67×10⁻⁸ W/m²·K⁴)
+        - **T₁, T₂**: 絶対温度 [K]
+        """)
     
     st.subheader("2. エネルギー保存則（熱力学第一法則）")
     st.markdown("""
@@ -1920,44 +1848,44 @@ elif page == "理論解説":
     col1, col2 = st.columns(2)
     
     with col1:
-            st.markdown("**連続の式（質量保存）**")
-            st.latex(r"\frac{\partial \rho}{\partial t} + \nabla \cdot (\rho \vec{v}) = 0")
-            st.markdown("""
-            **記号の説明：**
-            - **ρ**: 密度 [kg/m³]
-            - **t**: 時間 [s]
-            - **v⃗**: 速度ベクトル [m/s]
-            - **∇·**: 発散演算子 [1/m]
-            - **∂/∂t**: 時間に関する偏微分
-            
-            非圧縮性定常流では：
-            """)
-            st.latex(r"v_1 A_1 = v_2 A_2")
-            st.markdown("""
-            **記号の説明：**
-            - **v₁, v₂**: 断面1, 2での流速 [m/s]
-            - **A₁, A₂**: 断面1, 2での断面積 [m²]
-            """)
+        st.markdown("**連続の式（質量保存）**")
+        st.latex(r"\frac{\partial \rho}{\partial t} + \nabla \cdot (\rho \vec{v}) = 0")
+        st.markdown("""
+        **記号の説明：**
+        - **ρ**: 密度 [kg/m³]
+        - **t**: 時間 [s]
+        - **v⃗**: 速度ベクトル [m/s]
+        - **∇·**: 発散演算子 [1/m]
+        - **∂/∂t**: 時間に関する偏微分
+        
+        非圧縮性定常流では：
+        """)
+        st.latex(r"v_1 A_1 = v_2 A_2")
+        st.markdown("""
+        **記号の説明：**
+        - **v₁, v₂**: 断面1, 2での流速 [m/s]
+        - **A₁, A₂**: 断面1, 2での断面積 [m²]
+        """)
     
     with col2:
-            st.markdown("**ナビエ・ストークス方程式**")
-            st.latex(r"\rho \left(\frac{\partial \vec{v}}{\partial t} + (\vec{v} \cdot \nabla)\vec{v}\right) = -\nabla p + \mu \nabla^2 \vec{v} + \rho \vec{g}")
-            st.markdown("""
-            慣性力（非定常項＋対流項）、圧力、粘性力、体積力の釣り合い
-            
-            **記号の説明：**
-            - **ρ**: 密度 [kg/m³]
-            - **∂v⃗/∂t**: 局所的時間変化（非定常項） [m/s²]
-            - **(v⃗·∇)v⃗**: 対流項（移流項） [m/s²]
-            - **v⃗**: 速度ベクトル [m/s]
-            - **p**: 圧力 [Pa = N/m²]
-            - **∇p**: 圧力勾配 [Pa/m]
-            - **μ**: 動粘性係数 [Pa·s = kg/m·s]
-            - **∇²**: ラプラシアン演算子 [1/m²]
-            - **g⃗**: 重力加速度ベクトル [m/s²]
-            
-            ※実質微分 D/Dt = ∂/∂t + (v⃗·∇) を展開表示
-            """)
+        st.markdown("**ナビエ・ストークス方程式**")
+        st.latex(r"\rho \left(\frac{\partial \vec{v}}{\partial t} + (\vec{v} \cdot \nabla)\vec{v}\right) = -\nabla p + \mu \nabla^2 \vec{v} + \rho \vec{g}")
+        st.markdown("""
+        慣性力（非定常項＋対流項）、圧力、粘性力、体積力の釣り合い
+        
+        **記号の説明：**
+        - **ρ**: 密度 [kg/m³]
+        - **∂v⃗/∂t**: 局所的時間変化（非定常項） [m/s²]
+        - **(v⃗·∇)v⃗**: 対流項（移流項） [m/s²]
+        - **v⃗**: 速度ベクトル [m/s]
+        - **p**: 圧力 [Pa = N/m²]
+        - **∇p**: 圧力勾配 [Pa/m]
+        - **μ**: 動粘性係数 [Pa·s = kg/m·s]
+        - **∇²**: ラプラシアン演算子 [1/m²]
+        - **g⃗**: 重力加速度ベクトル [m/s²]
+        
+        ※実質微分 D/Dt = ∂/∂t + (v⃗·∇) を展開表示
+        """)
     
     st.subheader("2. 無次元数による流れの特性化")
     
@@ -1991,13 +1919,13 @@ elif page == "理論解説":
     col1, col2 = st.columns([1, 1])
     
     with col1:
-            st.subheader("1. レイノルズ数と流動状態")
-            st.markdown("""
-            管内流れの状態は**レイノルズ数**により判定されます。
-            """)
-            st.latex(r"Re = \frac{\rho v D}{\mu} = \frac{vD}{\nu}")
-            st.markdown("""
-            **記号の説明：**
+        st.subheader("1. レイノルズ数と流動状態")
+        st.markdown("""
+        管内流れの状態は**レイノルズ数**により判定されます。
+        """)
+        st.latex(r"Re = \frac{\rho v D}{\mu} = \frac{vD}{\nu}")
+        st.markdown("""
+        **記号の説明：**
         - **ρ**: 流体密度 [kg/m³]
         - **v**: 平均流速 [m/s]
         - **D**: 管内径 [m]
