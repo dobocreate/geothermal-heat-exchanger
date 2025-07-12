@@ -996,110 +996,334 @@ if page == "単一配管計算":
 elif page == "複数配管比較":
     # ページ遷移時のスクロールリセット用
     if st.session_state.page_changed:
-            st.empty()
+        st.empty()
     
     # タイトル
     st.markdown("<h1 style='text-align: center;'>📊 複数配管比較計算</h1>", unsafe_allow_html=True)
     st.markdown("""
     異なる管径での性能を比較し、最適な配管仕様を見つけるためのツールです。
+    各配管サイズごとに独立した計算を行い、最適な構成を提案します。
     """)
     
-    # 複数配管比較ページ
+    # 計算条件の入力セクション
+    st.header("📊 計算条件")
     
-    # 入力セクションで定義された変数を取得（複数配管比較タブ用）
-    # セッション状態から値を取得
-    target_temp = st.session_state.get("target_value", 25.0)
-    initial_temp = st.session_state.get("initial_value", 30.0)
-    flow_rate = st.session_state.get("flow_value", 50.0)
-    ground_temp = st.session_state.get("ground_value", 15.0)
-    pipe_length = st.session_state.get("length_value", 5.0)
-    boring_diameter = st.session_state.get("boring_diameter", "φ250")
-    boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
-    pipe_material = st.session_state.get("pipe_material", "鋼管")
-    consider_groundwater_temp_rise = st.session_state.get("consider_groundwater_temp_rise", False)
+    # 左側に概念図、右側に計算条件を配置
+    fig_col_multi, input_col_multi = st.columns([1, 2])
     
-    # 地下水温度上昇関連の変数
-    if consider_groundwater_temp_rise:
-        consider_circulation = st.session_state.get("consider_circulation", False)
-        if consider_circulation:
-            circulation_type = st.session_state.get("circulation_type", "同じ水を循環")
-            if circulation_type == "同じ水を循環":
-                operation_hours = st.session_state.get("hours_value", 8.0) / 60  # 分を時間に変換
+    with fig_col_multi:
+        st.image("geothermal.jpg", 
+                 caption="地中熱交換システムの構造", 
+                 use_container_width=True)
+        st.markdown("""<small>
+        ・管浸水距離 L: U字管の深さ<br>
+        ・掘削径 φ: ボーリング孔の直径<br>
+        ・1セット: 往路・復路の2本構成
+        </small>""", unsafe_allow_html=True)
+    
+    with input_col_multi:
+        # 2行2列レイアウトで計算条件を配置
+        # 1行目
+        row1_col1_multi, row1_col2_multi = st.columns([1, 1], gap="medium")
+        
+        with row1_col1_multi:
+            st.subheader("基本条件")
+            
+            # 目標出口温度（複数配管用）
+            target_col1_multi, target_col2_multi = st.columns([3, 1])
+            
+            # セッション状態の初期化（複数配管用）
+            if "multi_target_value" not in st.session_state:
+                st.session_state.multi_target_value = 23.0
+            
+            with target_col1_multi:
+                multi_target_temp_slider = st.slider("目標出口温度 (℃)", 20.0, 30.0, st.session_state.multi_target_value, 0.1, 
+                                              help="最終温度との比較に使用する。計算には使用しない",
+                                              key="multi_target_slider")
+            with target_col2_multi:
+                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+                multi_target_temp_input = st.number_input("", min_value=20.0, max_value=30.0, value=st.session_state.multi_target_value, step=0.1, 
+                                                   key="multi_target_input", label_visibility="collapsed")
+            
+            # 同期処理
+            if multi_target_temp_slider != st.session_state.multi_target_value:
+                st.session_state.multi_target_value = multi_target_temp_slider
+                st.rerun()
+            elif multi_target_temp_input != st.session_state.multi_target_value:
+                st.session_state.multi_target_value = multi_target_temp_input
+                st.rerun()
+            
+            multi_target_temp = st.session_state.multi_target_value
+            
+            # 入口温度（複数配管用）
+            initial_col1_multi, initial_col2_multi = st.columns([3, 1])
+            
+            if "multi_initial_value" not in st.session_state:
+                st.session_state.multi_initial_value = 30.0
+            
+            with initial_col1_multi:
+                multi_initial_temp_slider = st.slider("入口温度 (℃)", 20.0, 40.0, st.session_state.multi_initial_value, 0.1, key="multi_initial_slider")
+            with initial_col2_multi:
+                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+                multi_initial_temp_input = st.number_input("", min_value=20.0, max_value=40.0, value=st.session_state.multi_initial_value, step=0.1, 
+                                                    key="multi_initial_input", label_visibility="collapsed")
+            
+            if multi_initial_temp_slider != st.session_state.multi_initial_value:
+                st.session_state.multi_initial_value = multi_initial_temp_slider
+                st.rerun()
+            elif multi_initial_temp_input != st.session_state.multi_initial_value:
+                st.session_state.multi_initial_value = multi_initial_temp_input
+                st.rerun()
+            
+            multi_initial_temp = st.session_state.multi_initial_value
+            
+            # 総流量（複数配管用）
+            flow_col1_multi, flow_col2_multi = st.columns([3, 1])
+            
+            if "multi_flow_value" not in st.session_state:
+                st.session_state.multi_flow_value = 50.0
+            
+            with flow_col1_multi:
+                multi_flow_rate_slider = st.slider("総流量 (L/min)", 20.0, 100.0, st.session_state.multi_flow_value, 1.0, key="multi_flow_slider")
+            with flow_col2_multi:
+                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+                multi_flow_rate_input = st.number_input("", min_value=20.0, max_value=100.0, value=st.session_state.multi_flow_value, step=1.0, 
+                                                 key="multi_flow_input", label_visibility="collapsed")
+            
+            if multi_flow_rate_slider != st.session_state.multi_flow_value:
+                st.session_state.multi_flow_value = multi_flow_rate_slider
+                st.rerun()
+            elif multi_flow_rate_input != st.session_state.multi_flow_value:
+                st.session_state.multi_flow_value = multi_flow_rate_input
+                st.rerun()
+            
+            multi_flow_rate = st.session_state.multi_flow_value
+    
+        with row1_col2_multi:
+            st.subheader("地盤条件")
+            # 地下水温度（複数配管用）
+            ground_col1_multi, ground_col2_multi = st.columns([3, 1])
+            
+            if "multi_ground_value" not in st.session_state:
+                st.session_state.multi_ground_value = 15.0
+            
+            with ground_col1_multi:
+                multi_ground_temp_slider = st.slider("地下水温度 (℃)", 0.0, 20.0, st.session_state.multi_ground_value, 0.1, key="multi_ground_slider")
+            with ground_col2_multi:
+                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+                multi_ground_temp_input = st.number_input("", min_value=0.0, max_value=20.0, value=st.session_state.multi_ground_value, step=0.1, 
+                                                   key="multi_ground_input", label_visibility="collapsed")
+            
+            if multi_ground_temp_slider != st.session_state.multi_ground_value:
+                st.session_state.multi_ground_value = multi_ground_temp_slider
+                st.rerun()
+            elif multi_ground_temp_input != st.session_state.multi_ground_value:
+                st.session_state.multi_ground_value = multi_ground_temp_input
+                st.rerun()
+            
+            multi_ground_temp = st.session_state.multi_ground_value
+            
+            # 管浸水距離（複数配管用）
+            length_col1_multi, length_col2_multi = st.columns([3, 1])
+            
+            if "multi_length_value" not in st.session_state:
+                st.session_state.multi_length_value = 5.0
+            
+            with length_col1_multi:
+                multi_pipe_length_slider = st.slider("管浸水距離 (m)", 1.0, 30.0, st.session_state.multi_length_value, 0.5, key="multi_length_slider")
+            with length_col2_multi:
+                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
+                multi_pipe_length_input = st.number_input("", min_value=1.0, max_value=30.0, value=st.session_state.multi_length_value, step=0.5, 
+                                                   key="multi_length_input", label_visibility="collapsed")
+            
+            if multi_pipe_length_slider != st.session_state.multi_length_value:
+                st.session_state.multi_length_value = multi_pipe_length_slider
+                st.rerun()
+            elif multi_pipe_length_input != st.session_state.multi_length_value:
+                st.session_state.multi_length_value = multi_pipe_length_input
+                st.rerun()
+            
+            multi_pipe_length = st.session_state.multi_length_value
+            
+            # 掘削径の選択（複数配管用）
+            if "multi_boring_diameter" not in st.session_state:
+                st.session_state.multi_boring_diameter = "φ250"
+            
+            multi_boring_diameter = st.selectbox(
+                "掘削径",
+                ["φ116", "φ250"],
+                help="配管用の掘削径で、配管後に地下水などで充満される範囲を示す",
+                key="multi_boring_diameter"
+            )
+        
+        # 2行目
+        row2_col1_multi, row2_col2_multi = st.columns([1, 1], gap="medium")
+        
+        with row2_col1_multi:
+            st.subheader("配管条件")
+            
+            # 配管材質（複数配管用）
+            multi_pipe_material = st.selectbox(
+                "配管材質",
+                ["鋼管", "アルミ管", "銅管"],
+                key="multi_pipe_material"
+            )
+            
+            # 複数配管比較用の配管選択
+            st.markdown("比較する配管を選択")
+            compare_pipes = []
+            pipe_sizes = ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"]
+            
+            # チェックボックスで選択
+            col1, col2 = st.columns(2)
+            with col1:
+                for size in pipe_sizes[:4]:
+                    if st.checkbox(size, value=(size == "32A"), key=f"multi_check_{size}"):
+                        compare_pipes.append(size)
+            with col2:
+                for size in pipe_sizes[4:]:
+                    if st.checkbox(size, value=False, key=f"multi_check_{size}"):
+                        compare_pipes.append(size)
+            
+            if not compare_pipes:
+                st.warning("少なくとも1つの配管を選択してください")
+                compare_pipes = ["32A"]  # デフォルト値
+        
+        with row2_col2_multi:
+            st.subheader("地下水温度設定")
+            
+            # 地下水温度上昇の考慮（複数配管用）
+            multi_consider_groundwater_temp_rise = st.checkbox(
+                "地下水温度上昇を考慮する",
+                value=True,
+                help="ボーリング孔内の地下水温度上昇を計算に含める",
+                key="multi_consider_groundwater_temp_rise"
+            )
+            
+            if multi_consider_groundwater_temp_rise:
+                # 循環/新規供給の選択
+                multi_consider_circulation = st.checkbox(
+                    "循環使用する（運転時間を設定）",
+                    value=False,
+                    help="チェックを外すと、1回の通水時間を自動計算します",
+                    key="multi_consider_circulation"
+                )
+                
+                if multi_consider_circulation:
+                    # 循環方式の選択
+                    multi_circulation_type = st.radio(
+                        "循環方式",
+                        ["新しい水を連続供給", "同じ水を循環"],
+                        help="新しい水：入口温度一定、同じ水：出口温度が次の入口温度になる",
+                        key="multi_circulation_type"
+                    )
+                    
+                    # 運転時間の設定
+                    multi_operation_minutes = st.slider(
+                        "運転時間 (分)",
+                        min_value=1,
+                        max_value=60,
+                        value=10,
+                        help="地下水温度が上昇する運転時間",
+                        key="multi_operation_minutes"
+                    )
+                    multi_operation_hours = multi_operation_minutes / 60
+                else:
+                    multi_circulation_type = "新しい水を連続供給"  # デフォルト値
+                    multi_operation_hours = None  # 後で計算
+                
+                # 許容温度上昇の設定
+                multi_temp_rise_limit = st.slider(
+                    "許容地下水温度上昇 (℃)",
+                    min_value=5.0,
+                    max_value=20.0,
+                    value=10.0,
+                    step=0.5,
+                    help="地下水温度の最大上昇幅を制限",
+                    key="multi_temp_rise_limit"
+                )
             else:
-                operation_hours = 1  # 新しい水を連続供給の場合
-        else:
-            operation_hours = 1  # デフォルト値（後で再計算される）
-            circulation_type = None
-            temp_rise_limit = st.session_state.get("limit_value", 5.0)
-
-    # 各管径のセット本数を設定
-    st.subheader("配管セット本数の設定")
-    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
+                multi_consider_circulation = False
+                multi_circulation_type = "新しい水を連続供給"
+                multi_operation_hours = None
+                multi_temp_rise_limit = 10.0
     
-    with col1:
-        n_15A = st.number_input("15A", min_value=1, max_value=10, value=1, key="n_15A")
-        with col2:
-            n_20A = st.number_input("20A", min_value=1, max_value=10, value=1, key="n_20A")
-        with col3:
-            n_25A = st.number_input("25A", min_value=1, max_value=10, value=1, key="n_25A")
-        with col4:
-            n_32A = st.number_input("32A", min_value=1, max_value=10, value=1, key="n_32A")
-        with col5:
-            n_40A = st.number_input("40A", min_value=1, max_value=10, value=1, key="n_40A")
-        with col6:
-            n_50A = st.number_input("50A", min_value=1, max_value=10, value=1, key="n_50A")
-        with col7:
-            n_65A = st.number_input("65A", min_value=1, max_value=10, value=1, key="n_65A")
-        with col8:
-            n_80A = st.number_input("80A", min_value=1, max_value=10, value=1, key="n_80A")
+    # 比較する管径の本数設定
+    st.markdown("---")
+    st.header("📏 配管セット本数の設定")
+    st.markdown("選択した各管径で比較する配管セット本数を設定します（1セット = 往路・復路の2本）")
+    
+    # 選択された管径のみ本数設定を表示
+    pipe_counts_user = {}
+    num_selected = len(compare_pipes)
+    
+    if num_selected > 0:
+        # 選択された配管数に応じて列数を調整
+        cols = st.columns(min(4, num_selected))
         
-        # ユーザー入力の本数でpipe_countsを更新
-        pipe_counts_user = {
-            "15A": n_15A,
-            "20A": n_20A,
-            "25A": n_25A,
-            "32A": n_32A,
-            "40A": n_40A,
-            "50A": n_50A,
-            "65A": n_65A,
-            "80A": n_80A
-        }
+        for i, pipe_size in enumerate(compare_pipes):
+            with cols[i % min(4, num_selected)]:
+                pipe_counts_user[pipe_size] = st.number_input(
+                    f"{pipe_size} セット数", 
+                    min_value=1, 
+                    max_value=5, 
+                    value=1,
+                    key=f"multi_count_{pipe_size}"
+                )
         
-        # 共通データの再定義
-        pipe_specs = {
-            "15A": 16.1,
-            "20A": 22.2,
-            "25A": 28.0,
-            "32A": 33.5,
-            "40A": 41.2,
-            "50A": 52.6,
-            "65A": 67.8,
-            "80A": 80.1
-        }
+        # 選択されていない配管はデフォルト値を設定
+        for size in pipe_sizes:
+            if size not in pipe_counts_user:
+                pipe_counts_user[size] = 1
         
-        pipe_counts = {
-            "15A": 1,
-            "20A": 1,
-            "25A": 1,
-            "32A": 4,
-            "40A": 2,
-            "50A": 1,
-            "65A": 1,
-            "80A": 1
-        }
-        
-        thermal_conductivity = {
-            "鋼管": 50.0,
-            "アルミ管": 237.0,
-            "銅管": 398.0
-        }
-        
-        # 初期計算用の地下水温度
-        effective_ground_temp = ground_temp
-        groundwater_temp_rise = 0.0  # 初期値
-        
-        # 平均温度の計算
-        avg_temp = (initial_temp + effective_ground_temp) / 2
+    # 計算実行
+    st.markdown("---")
+    st.header("📈 計算結果")
+    
+    # 配管仕様
+    pipe_specs = {
+        "15A": 16.1,   # mm
+        "20A": 21.6,   # mm
+        "25A": 27.6,   # mm
+        "32A": 35.7,   # mm
+        "40A": 41.6,   # mm
+        "50A": 52.9,   # mm
+        "65A": 67.9,   # mm
+        "80A": 80.7    # mm
+    }
+    
+    # 材質による熱伝導率 (W/m・K)
+    thermal_conductivity = {
+        "鋼管": 50.0,
+        "アルミ管": 237.0,
+        "銅管": 398.0
+    }
+    
+    # 配管外径データ（SGP規格）
+    pipe_outer_diameter_sgp = {
+        "15A": 21.7,   # mm
+        "20A": 27.2,   # mm
+        "25A": 34.0,   # mm
+        "32A": 42.7,   # mm
+        "40A": 48.6,   # mm
+        "50A": 60.5,   # mm
+        "65A": 76.3,   # mm
+        "80A": 89.1    # mm
+    }
+    
+    # 初期計算用の地下水温度（複数配管用の値を使用）
+    effective_ground_temp = multi_ground_temp
+    
+    # 掘削径の取得（複数配管用）
+    if multi_boring_diameter == "φ116":
+        boring_diameter_mm = 116
+    elif multi_boring_diameter == "φ250":
+        boring_diameter_mm = 250
+    else:
+        boring_diameter_mm = 250  # デフォルト
+    
+    # 平均温度の計算（物性値計算用）
+    avg_temp = (multi_initial_temp + effective_ground_temp) / 2
         
         # 温度依存の物性値計算
         if avg_temp <= 20:
@@ -1122,204 +1346,229 @@ elif page == "複数配管比較":
             density = 995.6
             specific_heat = 4178
         
-        pipe_thermal_cond = thermal_conductivity[pipe_material]
-        h_outer = 300
-        total_length = pipe_length * 2
-        boring_area = math.pi * (boring_diameter_mm / 2) ** 2  # mm²
-        
-        # 管径別比較データの計算
-        pipe_comparison = []
-        warnings_list = []  # 警告メッセージ用リスト
-        
-        for pipe_size in ["15A", "20A", "25A", "32A", "40A", "50A", "65A", "80A"]:
+    pipe_thermal_cond = thermal_conductivity[multi_pipe_material]
+    h_outer = 300
+    total_length = multi_pipe_length * 2
+    boring_area = math.pi * (boring_diameter_mm / 2) ** 2  # mm²
+    
+    # 管径別比較データの計算
+    pipe_comparison = []
+    warnings_list = []  # 警告メッセージ用リスト
+    
+    # 選択された配管のみ計算
+    for pipe_size in compare_pipes:
             # 各管径での計算
-            inner_d = pipe_specs[pipe_size] / 1000
-            area = math.pi * (inner_d / 2) ** 2
-            n_pipes = pipe_counts_user[pipe_size]
-            flow_per_p = flow_rate / n_pipes
-            flow_rate_m3s_per_p = flow_per_p / 60000
-            vel = flow_rate_m3s_per_p / area
-            re = vel * inner_d / kinematic_viscosity
+        inner_d = pipe_specs[pipe_size] / 1000
+        area = math.pi * (inner_d / 2) ** 2
+        n_pipes = pipe_counts_user[pipe_size]
+        flow_per_p = multi_flow_rate / n_pipes
+        flow_rate_m3s_per_p = flow_per_p / 60000
+        vel = flow_rate_m3s_per_p / area
+        re = vel * inner_d / kinematic_viscosity
             
-            if re < 2300:
-                nu = 3.66
-            else:
-                nu = 0.023 * (re ** 0.8) * (prandtl ** 0.3)
+        if re < 2300:
+            nu = 3.66
+        else:
+            nu = 0.023 * (re ** 0.8) * (prandtl ** 0.3)
+        
+        h = nu * water_thermal_conductivity / inner_d
+        
+        # 外径データ（JIS規格）
+        pipe_outer_diameters_comp = {
+            "15A": 21.7 / 1000,  # m
+            "20A": 27.2 / 1000,
+            "25A": 34.0 / 1000,
+            "32A": 42.7 / 1000,
+            "40A": 48.6 / 1000,
+            "50A": 60.5 / 1000,
+            "65A": 76.3 / 1000,
+            "80A": 89.1 / 1000
+        }
+        
+        outer_d = pipe_outer_diameters_comp[pipe_size]
+        
+        # 配管面積と掘削径の検証
+        total_pipe_area_temp = n_pipes * math.pi * (outer_d / 2) ** 2 * 1000000  # mm²
+        if total_pipe_area_temp > boring_area * 0.8:
+            warnings_list.append(f"{pipe_size}: 配管総面積が掘削径の80%を超過 ({total_pipe_area_temp/boring_area*100:.1f}%)")
+        
+        # 総括熱伝達係数（内径基準）
+        U_temp = 1 / (1/h + 
+                     inner_d/(2*pipe_thermal_cond) * math.log(outer_d/inner_d) + 
+                     inner_d/(outer_d*h_outer))
+        
+        A_temp = math.pi * inner_d * total_length
+        mass_flow_per_p = flow_rate_m3s_per_p * density
+        NTU_temp = U_temp * A_temp / (mass_flow_per_p * specific_heat)
+        eff_temp = 1 - math.exp(-NTU_temp)
+        final_t = multi_initial_temp - eff_temp * (multi_initial_temp - effective_ground_temp)
+        
+        # 地下水温度上昇の計算（各配管サイズごと）
+        if multi_consider_groundwater_temp_rise:
+            # 熱交換量の計算 [W]
+            heat_rate_temp = mass_flow_per_p * n_pipes * specific_heat * (multi_initial_temp - final_t)
             
-            h = nu * water_thermal_conductivity / inner_d
+            # 地下水の体積計算（ボーリング孔内のみ）
+            boring_volume_temp = math.pi * (boring_diameter_mm / 2000) ** 2 * multi_pipe_length  # m³
+            # 配管の総体積（U字管なので往復分で2倍）
+            pipe_total_volume_temp = math.pi * (outer_d / 2) ** 2 * multi_pipe_length * n_pipes * 2  # m³
+            # 地下水体積
+            groundwater_volume_temp = boring_volume_temp - pipe_total_volume_temp  # m³
+            groundwater_mass_temp = groundwater_volume_temp * density  # kg
             
-            # 外径データ（JIS規格）
-            pipe_outer_diameters_comp = {
-                "15A": 21.7 / 1000,  # m
-                "20A": 27.2 / 1000,
-                "25A": 34.0 / 1000,
-                "32A": 42.7 / 1000,
-                "40A": 48.6 / 1000,
-                "50A": 60.5 / 1000,
-                "65A": 76.3 / 1000,
-                "80A": 89.1 / 1000
-            }
-            
-            outer_d = pipe_outer_diameters_comp[pipe_size]
-            
-            # 配管面積と掘削径の検証
-            total_pipe_area_temp = n_pipes * math.pi * (outer_d / 2) ** 2 * 1000000  # mm²
-            if total_pipe_area_temp > boring_area * 0.8:
-                warnings_list.append(f"{pipe_size}: 配管総面積が掘削径の80%を超過 ({total_pipe_area_temp/boring_area*100:.1f}%)")
-            
-            # 総括熱伝達係数（内径基準）
-            U_temp = 1 / (1/h + 
-                         inner_d/(2*pipe_thermal_cond) * math.log(outer_d/inner_d) + 
-                         inner_d/(outer_d*h_outer))
-            
-            A_temp = math.pi * inner_d * total_length
-            mass_flow_per_p = flow_rate_m3s_per_p * density
-            NTU_temp = U_temp * A_temp / (mass_flow_per_p * specific_heat)
-            eff_temp = 1 - math.exp(-NTU_temp)
-            final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp)
-            
-            # 地下水温度上昇の計算（各配管サイズごと）
-            if consider_groundwater_temp_rise:
-                # 熱交換量の計算 [W]
-                heat_rate_temp = mass_flow_per_p * n_pipes * specific_heat * (initial_temp - final_t)
+            # 循環方式に応じた計算
+            if multi_consider_circulation and multi_circulation_type == "同じ水を循環":
+                # 同じ水を循環させる場合の計算（反復計算）
+                time_step = 60  # 1分ごとの計算
+                num_steps = int(multi_operation_hours * 3600 / time_step)
                 
-                # 地下水の体積計算（ボーリング孔内のみ）
-                boring_volume_temp = math.pi * (boring_diameter_mm / 2000) ** 2 * pipe_length  # m³
-                # 配管の総体積（U字管なので往復分で2倍）
-                pipe_total_volume_temp = math.pi * (outer_d / 2) ** 2 * pipe_length * n_pipes * 2  # m³
-                # 地下水体積
-                groundwater_volume_temp = boring_volume_temp - pipe_total_volume_temp  # m³
-                groundwater_mass_temp = groundwater_volume_temp * density  # kg
-                
-                # 循環方式に応じた計算
-                if consider_circulation and circulation_type == "同じ水を循環":
-                    # 同じ水を循環させる場合の計算（反復計算）
-                    time_step = 60  # 1分ごとの計算
-                    num_steps = int(operation_hours * 3600 / time_step)
+                current_inlet_temp = multi_initial_temp
+                current_ground_temp = multi_ground_temp
                     
-                    current_inlet_temp = initial_temp
-                    current_ground_temp = ground_temp
+                for i in range(num_steps):
+                    # 現在の温度での熱交換計算
+                    current_effectiveness = 1 - math.exp(-NTU_temp)
+                    current_outlet_temp = current_inlet_temp - current_effectiveness * (current_inlet_temp - current_ground_temp)
                     
-                    for i in range(num_steps):
-                        # 現在の温度での熱交換計算
-                        current_effectiveness = 1 - math.exp(-NTU_temp)
-                        current_outlet_temp = current_inlet_temp - current_effectiveness * (current_inlet_temp - current_ground_temp)
-                        
-                        # 熱交換量
-                        current_heat_rate = mass_flow_per_p * n_pipes * specific_heat * (current_inlet_temp - current_outlet_temp)
-                        
-                        # 地下水温度上昇
-                        if groundwater_mass_temp > 0:
-                            delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass_temp * specific_heat)
-                            current_ground_temp += delta_ground_temp
-                            # 物理的制約：地下水温度は入口温度を超えない
-                            current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit, current_inlet_temp)
-                        
-                        # 次のステップの入口温度は現在の出口温度
-                        current_inlet_temp = current_outlet_temp
+                    # 熱交換量
+                    current_heat_rate = mass_flow_per_p * n_pipes * specific_heat * (current_inlet_temp - current_outlet_temp)
                     
-                    # 最終結果
-                    final_t = current_outlet_temp
-                    effective_ground_temp_local = current_ground_temp
-                    gw_temp_rise = current_ground_temp - ground_temp
-                    
-                else:
-                    # 新しい水を連続供給する場合、または循環を考慮しない場合
-                    # 循環を考慮しない場合は1回の通水時間を計算
-                    if not consider_circulation:
-                        total_pipe_length_temp = pipe_length * 2  # U字管往復
-                        transit_time_seconds_temp = total_pipe_length_temp / vel  # 秒
-                        operation_hours_temp = transit_time_seconds_temp / 3600  # 時間に変換
-                    else:
-                        operation_hours_temp = operation_hours
-                        
-                    operation_time = operation_hours_temp * 3600  # 秒
+                    # 地下水温度上昇
                     if groundwater_mass_temp > 0:
-                        gw_temp_rise = (heat_rate_temp * operation_time) / (groundwater_mass_temp * specific_heat)
+                        delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass_temp * specific_heat)
+                        current_ground_temp += delta_ground_temp
                         # 物理的制約：地下水温度は入口温度を超えない
-                        max_possible_rise = initial_temp - ground_temp
-                        gw_temp_rise = min(gw_temp_rise, temp_rise_limit, max_possible_rise)
-                    else:
-                        gw_temp_rise = 0.0
+                        current_ground_temp = min(current_ground_temp, multi_ground_temp + multi_temp_rise_limit, current_inlet_temp)
                     
-                    # 実効地下水温度で再計算
-                    effective_ground_temp_local = ground_temp + gw_temp_rise
-                    final_t = initial_temp - eff_temp * (initial_temp - effective_ground_temp_local)
+                    # 次のステップの入口温度は現在の出口温度
+                    current_inlet_temp = current_outlet_temp
+                
+                # 最終結果
+                final_t = current_outlet_temp
+                effective_ground_temp_local = current_ground_temp
+                gw_temp_rise = current_ground_temp - multi_ground_temp
+                    
             else:
-                gw_temp_rise = 0.0
-            
-            pipe_comparison.append({
-                "管径": pipe_size,
-                "本数": n_pipes,
-                "出口温度(℃)": round(final_t, 1),
-                "効率(%)": round(eff_temp * 100, 1),
-                "流速(m/s)": round(vel, 3),
-                "レイノルズ数": int(re),
-                "h_i(W/m²K)": int(h),
-                "U(W/m²K)": round(U_temp, 1),
-                "NTU": round(NTU_temp, 3)
-            })
-
-        df = pd.DataFrame(pipe_comparison)
+                # 新しい水を連続供給する場合、または循環を考慮しない場合
+                # 循環を考慮しない場合は1回の通水時間を計算
+                if not multi_consider_circulation:
+                    total_pipe_length_temp = multi_pipe_length * 2  # U字管往復
+                    transit_time_seconds_temp = total_pipe_length_temp / vel  # 秒
+                    operation_hours_temp = transit_time_seconds_temp / 3600  # 時間に変換
+                else:
+                    operation_hours_temp = multi_operation_hours
+                    
+                operation_time = operation_hours_temp * 3600  # 秒
+                if groundwater_mass_temp > 0:
+                    gw_temp_rise = (heat_rate_temp * operation_time) / (groundwater_mass_temp * specific_heat)
+                    # 物理的制約：地下水温度は入口温度を超えない
+                    max_possible_rise = multi_initial_temp - multi_ground_temp
+                    gw_temp_rise = min(gw_temp_rise, multi_temp_rise_limit, max_possible_rise)
+                else:
+                    gw_temp_rise = 0.0
+                
+                # 実効地下水温度で再計算
+                effective_ground_temp_local = multi_ground_temp + gw_temp_rise
+                final_t = multi_initial_temp - eff_temp * (multi_initial_temp - effective_ground_temp_local)
+        else:
+            gw_temp_rise = 0.0
         
-        # 管径別比較結果
-        st.subheader("📋 管径別比較結果")
-        st.dataframe(df, use_container_width=True)
-        
-        # 警告表示
-        if warnings_list:
-            st.error("⚠️ 配管面積に関する警告")
-            for warning in warnings_list:
-                st.warning(warning)
+        pipe_comparison.append({
+            "管径": pipe_size,
+            "本数": n_pipes,
+            "出口温度(℃)": round(final_t, 1),
+            "効率(%)": round(eff_temp * 100, 1),
+            "流速(m/s)": round(vel, 3),
+            "レイノルズ数": int(re),
+            "h_i(W/m²K)": int(h),
+            "U(W/m²K)": round(U_temp, 1),
+            "NTU": round(NTU_temp, 3)
+        })
 
-        # グラフ表示
-        st.header("📊 視覚化")
+    df = pd.DataFrame(pipe_comparison)
+    
+    # 管径別比較結果
+    st.subheader("📋 管径別比較結果")
+    st.dataframe(df, use_container_width=True)
+    
+    # 警告表示
+    if warnings_list:
+        st.error("⚠️ 配管面積に関する警告")
+        for warning in warnings_list:
+            st.warning(warning)
 
-        # 管径別効率比較
-        fig = make_subplots(
-            rows=1, cols=2,
-            subplot_titles=("管径別効率", "管径別出口温度"),
-            specs=[[{"secondary_y": False}, {"secondary_y": False}]]
-        )
+    # グラフ表示
+    st.header("📊 視覚化")
 
-        # 効率グラフ
-        fig.add_trace(
-            go.Bar(x=df["管径"], y=df["効率(%)"], name="効率", marker_color="blue"),
-            row=1, col=1
-        )
+    # 管径別効率比較
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=("管径別効率", "管径別出口温度"),
+        specs=[[{"secondary_y": False}, {"secondary_y": False}]]
+    )
 
-        # 温度グラフ
-        fig.add_trace(
-            go.Scatter(x=df["管径"], y=df["出口温度(℃)"], mode="lines+markers", 
-                       name="出口温度", line=dict(color="red")),
-            row=1, col=2
-        )
+    # 効率グラフ
+    fig.add_trace(
+        go.Bar(x=df["管径"], y=df["効率(%)"], name="効率", marker_color="blue"),
+        row=1, col=1
+    )
 
-        fig.update_layout(height=400, showlegend=True)
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # 最適配管の提案
-        st.header("🎆 最適配管の分析")
-        
+    # 温度グラフ
+    fig.add_trace(
+        go.Scatter(x=df["管径"], y=df["出口温度(℃)"], mode="lines+markers", 
+                   name="出口温度", line=dict(color="red")),
+        row=1, col=2
+    )
+    
+    # 目標温度ラインを追加
+    fig.add_hline(y=multi_target_temp, line_dash="dash", line_color="green", 
+                  annotation_text=f"目標温度: {multi_target_temp}℃", 
+                  annotation_position="right", row=1, col=2)
+
+    fig.update_layout(height=400, showlegend=True)
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # 最適配管の提案
+    st.header("🎆 最適配管の分析")
+    
+    # 目標温度との比較
+    if len(df) > 0:
         # 最も効率が高い配管を特定
         best_pipe = df.loc[df["効率(%)"].idxmax()]
         
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.success(f"🥇 最適配管: {best_pipe['管径']}")
-            st.metric("出口温度", f"{best_pipe['出口温度(℃)']}℃")
+        # 目標温度を満たす配管を探す
+        df_target_met = df[df["出口温度(℃)"] <= multi_target_temp]
         
-        with col2:
-            st.metric("効率", f"{best_pipe['効率(%)']}%")
-            st.metric("本数", f"{best_pipe['本数']}本")
-        
-        with col3:
-            st.metric("流速", f"{best_pipe['流速(m/s)']} m/s")
-            st.metric("NTU", f"{best_pipe['NTU']}")
+        if len(df_target_met) > 0:
+            # 目標温度を満たす中で最も効率が高い配管
+            best_pipe_target = df_target_met.loc[df_target_met["効率(%)"].idxmax()]
+            st.success(f"✅ 目標温度（{multi_target_temp}℃）を満たす最適配管: {best_pipe_target['管径']}")
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("出口温度", f"{best_pipe_target['出口温度(℃)']}℃")
+                st.metric("効率", f"{best_pipe_target['効率(%)']}%")
+            
+            with col2:
+                st.metric("本数", f"{best_pipe_target['本数']}セット")
+                st.metric("流速", f"{best_pipe_target['流速(m/s)']} m/s")
+            
+            with col3:
+                st.metric("NTU", f"{best_pipe_target['NTU']}")
+                # 熱交換量を計算
+                best_pipe_size = best_pipe_target['管径']
+                best_n_pipes = best_pipe_target['本数']
+                best_flow_per_p = multi_flow_rate / best_n_pipes / 60000  # L/min → m³/s
+                best_mass_flow_per_p = best_flow_per_p * density
+                heat_exchange_kw = best_mass_flow_per_p * best_n_pipes * specific_heat * (multi_initial_temp - best_pipe_target['出口温度(℃)']) / 1000
+                st.metric("熱交換量", f"{heat_exchange_kw:.1f} kW")
+        else:
+            st.warning(f"⚠️ 選択した配管では目標温度（{multi_target_temp}℃）を満たせません")
+            st.info(f"最も効率的な配管: {best_pipe['管径']} (出口温度: {best_pipe['出口温度(℃)']}℃)")
 
-        # フッター
-        st.markdown("---")
-        st.markdown("**開発者**: dobocreate | **バージョン**: 1.2.0 | **更新**: 2025-01-06")
+    # フッター
+    st.markdown("---")
+    st.markdown("**開発者**: dobocreate | **バージョン**: 1.4.1 | **更新**: 2025-01-12")
 
 elif page == "理論解説":
     # ページ遷移時のスクロールリセット用
