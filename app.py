@@ -88,6 +88,7 @@ if page == "単一配管計算":
     
     # タイトル
     st.markdown("<h1 style='text-align: center;'>🌡️ 地中熱交換簡易シミュレーター</h1>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>📊 単一配管計算</h2>", unsafe_allow_html=True)
     st.markdown("""
     地上の温水を、地盤の安定した温度環境を利用して冷却する、環境配慮型システムの設計を支援する簡易シミュレーターです。
     """)
@@ -999,7 +1000,8 @@ elif page == "複数配管比較":
         st.empty()
     
     # タイトル
-    st.markdown("<h1 style='text-align: center;'>📊 複数配管比較計算</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>🌡️ 地中熱交換簡易シミュレーター</h1>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>📊 複数配管比較計算</h2>", unsafe_allow_html=True)
     st.markdown("""
     異なる管径での性能を比較し、最適な配管仕様を見つけるためのツールです。
     各配管サイズごとに独立した計算を行い、最適な構成を提案します。
