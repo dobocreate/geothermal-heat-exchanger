@@ -401,6 +401,39 @@ if page == "単一配管計算":
     # 計算結果のタイトル
     st.header("📈 計算結果")
     
+    # 入力セクションで定義された変数を取得
+    # セッション状態から値を取得
+    target_temp = st.session_state.get("target_value", 25.0)
+    initial_temp = st.session_state.get("initial_value", 30.0)
+    flow_rate = st.session_state.get("flow_value", 50.0)
+    ground_temp = st.session_state.get("ground_value", 15.0)
+    pipe_length = st.session_state.get("length_value", 5.0)
+    boring_diameter = st.session_state.get("boring_diameter", "φ250")
+    boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
+    pipe_material = st.session_state.get("pipe_material", "鋼管")
+    pipe_diameter = st.session_state.get("pipe_diameter", "32A")
+    num_pipes_user = st.session_state.get("num_pipes_user", 1)
+    consider_groundwater_temp_rise = st.session_state.get("consider_groundwater_temp_rise", False)
+    
+    # 地下水温度上昇関連の変数
+    if consider_groundwater_temp_rise:
+        consider_circulation = st.session_state.get("consider_circulation", False)
+        if consider_circulation:
+            circulation_type = st.session_state.get("circulation_type", "同じ水を循環")
+            if circulation_type == "同じ水を循環":
+                operation_hours = st.session_state.get("hours_value", 8.0) / 60  # 分を時間に変換
+            else:
+                operation_hours = 1  # 新しい水を連続供給の場合
+        else:
+            operation_hours = 1  # デフォルト値（後で再計算される）
+            circulation_type = None
+        temp_rise_limit = st.session_state.get("limit_value", 5.0)
+    else:
+        operation_hours = 1  # デフォルト値
+        temp_rise_limit = 5  # デフォルト値
+        consider_circulation = False
+        circulation_type = None
+    
     # 配管仕様データ（JIS規格に基づく内径mm）
     pipe_specs = {
         "15A": 16.1,
@@ -430,6 +463,18 @@ if page == "単一配管計算":
         "鋼管": 50.0,
         "アルミ管": 237.0,
         "銅管": 398.0
+    }
+    
+    # 配管外径データ（SGP規格）
+    pipe_outer_diameter_sgp = {
+        "15A": 21.7,   # mm
+        "20A": 27.2,   # mm
+        "25A": 34.0,   # mm
+        "32A": 42.7,   # mm
+        "40A": 48.6,   # mm
+        "50A": 60.5,   # mm
+        "65A": 76.3,   # mm
+        "80A": 89.1    # mm
     }
     
     # 初期計算用の地下水温度
@@ -905,6 +950,37 @@ elif page == "複数配管比較":
     """)
     
     # 複数配管比較ページ
+    
+    # 入力セクションで定義された変数を取得（複数配管比較タブ用）
+    # セッション状態から値を取得
+    target_temp = st.session_state.get("target_value", 25.0)
+    initial_temp = st.session_state.get("initial_value", 30.0)
+    flow_rate = st.session_state.get("flow_value", 50.0)
+    ground_temp = st.session_state.get("ground_value", 15.0)
+    pipe_length = st.session_state.get("length_value", 5.0)
+    boring_diameter = st.session_state.get("boring_diameter", "φ250")
+    boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
+    pipe_material = st.session_state.get("pipe_material", "鋼管")
+    consider_groundwater_temp_rise = st.session_state.get("consider_groundwater_temp_rise", False)
+    
+    # 地下水温度上昇関連の変数
+    if consider_groundwater_temp_rise:
+        consider_circulation = st.session_state.get("consider_circulation", False)
+        if consider_circulation:
+            circulation_type = st.session_state.get("circulation_type", "同じ水を循環")
+            if circulation_type == "同じ水を循環":
+                operation_hours = st.session_state.get("hours_value", 8.0) / 60  # 分を時間に変換
+            else:
+                operation_hours = 1  # 新しい水を連続供給の場合
+        else:
+            operation_hours = 1  # デフォルト値（後で再計算される）
+            circulation_type = None
+        temp_rise_limit = st.session_state.get("limit_value", 5.0)
+    else:
+        operation_hours = 1  # デフォルト値
+        temp_rise_limit = 5  # デフォルト値
+        consider_circulation = False
+        circulation_type = None
 
     # 各管径のセット本数を設定
     st.subheader("配管セット本数の設定")
