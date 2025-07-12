@@ -125,12 +125,12 @@ if page == "単一配管計算":
                 st.session_state.target_value = 23.0
             
             with target_col1:
-                target_temp_slider = st.slider("目標出口温度 (℃)", 20.0, 30.0, st.session_state.target_value, 0.1, 
+                target_temp_slider = st.slider("目標出口温度 (℃)", 20.0, 30.0, st.session_state.target_value, 1.0, 
                                               help="最終温度との比較に使用する。計算には使用しない",
                                               key="target_slider")
             with target_col2:
                 st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                target_temp_input = st.number_input("", min_value=20.0, max_value=30.0, value=st.session_state.target_value, step=0.1, 
+                target_temp_input = st.number_input("", min_value=20.0, max_value=30.0, value=st.session_state.target_value, step=1.0, 
                                                    key="target_input", label_visibility="collapsed")
             
             # 同期処理：どちらかが変更されたら共通の値を更新
@@ -150,10 +150,10 @@ if page == "単一配管計算":
                 st.session_state.initial_value = 30.0
             
             with initial_col1:
-                initial_temp_slider = st.slider("入口温度 (℃)", 20.0, 40.0, st.session_state.initial_value, 0.1, key="initial_slider")
+                initial_temp_slider = st.slider("入口温度 (℃)", 20.0, 40.0, st.session_state.initial_value, 1.0, key="initial_slider")
             with initial_col2:
                 st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                initial_temp_input = st.number_input("", min_value=20.0, max_value=40.0, value=st.session_state.initial_value, step=0.1, 
+                initial_temp_input = st.number_input("", min_value=20.0, max_value=40.0, value=st.session_state.initial_value, step=1.0, 
                                                     key="initial_input", label_visibility="collapsed")
             
             if initial_temp_slider != st.session_state.initial_value:
@@ -196,10 +196,10 @@ if page == "単一配管計算":
                 st.session_state.ground_value = 15.0
             
             with ground_col1:
-                ground_temp_slider = st.slider("地下水温度 (℃)", 0.0, 20.0, st.session_state.ground_value, 0.1, key="ground_slider")
+                ground_temp_slider = st.slider("地下水温度 (℃)", 0.0, 20.0, st.session_state.ground_value, 1.0, key="ground_slider")
             with ground_col2:
                 st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                ground_temp_input = st.number_input("", min_value=0.0, max_value=20.0, value=st.session_state.ground_value, step=0.1, 
+                ground_temp_input = st.number_input("", min_value=0.0, max_value=20.0, value=st.session_state.ground_value, step=1.0, 
                                                    key="ground_input", label_visibility="collapsed")
             
             if ground_temp_slider != st.session_state.ground_value:
@@ -1039,12 +1039,12 @@ elif page == "複数配管比較":
                 st.session_state.multi_target_value = 23.0
             
             with target_col1_multi:
-                multi_target_temp_slider = st.slider("目標出口温度 (℃)", 20.0, 30.0, st.session_state.multi_target_value, 0.1, 
+                multi_target_temp_slider = st.slider("目標出口温度 (℃)", 20.0, 30.0, st.session_state.multi_target_value, 1.0, 
                                               help="最終温度との比較に使用する。計算には使用しない",
                                               key="multi_target_slider")
             with target_col2_multi:
                 st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                multi_target_temp_input = st.number_input("", min_value=20.0, max_value=30.0, value=st.session_state.multi_target_value, step=0.1, 
+                multi_target_temp_input = st.number_input("", min_value=20.0, max_value=30.0, value=st.session_state.multi_target_value, step=1.0, 
                                                    key="multi_target_input", label_visibility="collapsed")
             
             # 同期処理
@@ -1064,10 +1064,10 @@ elif page == "複数配管比較":
                 st.session_state.multi_initial_value = 30.0
             
             with initial_col1_multi:
-                multi_initial_temp_slider = st.slider("入口温度 (℃)", 20.0, 40.0, st.session_state.multi_initial_value, 0.1, key="multi_initial_slider")
+                multi_initial_temp_slider = st.slider("入口温度 (℃)", 20.0, 40.0, st.session_state.multi_initial_value, 1.0, key="multi_initial_slider")
             with initial_col2_multi:
                 st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                multi_initial_temp_input = st.number_input("", min_value=20.0, max_value=40.0, value=st.session_state.multi_initial_value, step=0.1, 
+                multi_initial_temp_input = st.number_input("", min_value=20.0, max_value=40.0, value=st.session_state.multi_initial_value, step=1.0, 
                                                     key="multi_initial_input", label_visibility="collapsed")
             
             if multi_initial_temp_slider != st.session_state.multi_initial_value:
@@ -1110,10 +1110,10 @@ elif page == "複数配管比較":
                 st.session_state.multi_ground_value = 15.0
             
             with ground_col1_multi:
-                multi_ground_temp_slider = st.slider("地下水温度 (℃)", 0.0, 20.0, st.session_state.multi_ground_value, 0.1, key="multi_ground_slider")
+                multi_ground_temp_slider = st.slider("地下水温度 (℃)", 0.0, 20.0, st.session_state.multi_ground_value, 1.0, key="multi_ground_slider")
             with ground_col2_multi:
                 st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                multi_ground_temp_input = st.number_input("", min_value=0.0, max_value=20.0, value=st.session_state.multi_ground_value, step=0.1, 
+                multi_ground_temp_input = st.number_input("", min_value=0.0, max_value=20.0, value=st.session_state.multi_ground_value, step=1.0, 
                                                    key="multi_ground_input", label_visibility="collapsed")
             
             if multi_ground_temp_slider != st.session_state.multi_ground_value:
@@ -1422,7 +1422,10 @@ elif page == "複数配管比較":
             if multi_consider_circulation and multi_circulation_type == "同じ水を循環":
                 # 同じ水を循環させる場合の計算（反復計算）
                 time_step = 60  # 1分ごとの計算
-                num_steps = int(multi_operation_hours * 3600 / time_step)
+                if multi_operation_hours is not None:
+                    num_steps = int(multi_operation_hours * 3600 / time_step)
+                else:
+                    num_steps = 1  # デフォルト値
                 
                 current_inlet_temp = multi_initial_temp
                 current_ground_temp = multi_ground_temp
@@ -1458,7 +1461,7 @@ elif page == "複数配管比較":
                     transit_time_seconds_temp = total_pipe_length_temp / vel  # 秒
                     operation_hours_temp = transit_time_seconds_temp / 3600  # 時間に変換
                 else:
-                    operation_hours_temp = multi_operation_hours
+                    operation_hours_temp = multi_operation_hours if multi_operation_hours is not None else 1.0
                     
                 operation_time = operation_hours_temp * 3600  # 秒
                 if groundwater_mass_temp > 0:
