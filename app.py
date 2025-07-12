@@ -283,18 +283,9 @@ if page == "単一配管計算":
             }
             
             # 配管セット本数の設定
-            # 管径が変更された場合のデフォルト値設定
+            # 初回のみ固定値で初期化
             if "num_pipes_user" not in st.session_state:
-                st.session_state.num_pipes_user = pipe_counts_default.get(pipe_diameter, 1)
-            
-            # 管径が変更された場合の処理
-            if "previous_pipe_diameter" not in st.session_state:
-                st.session_state.previous_pipe_diameter = pipe_diameter
-            
-            if st.session_state.previous_pipe_diameter != pipe_diameter:
-                # 管径が変更された場合、デフォルト値にリセット
-                st.session_state.num_pipes_user = pipe_counts_default.get(pipe_diameter, 1)
-                st.session_state.previous_pipe_diameter = pipe_diameter
+                st.session_state.num_pipes_user = 1
             
             num_pipes_user = st.selectbox(
                 "配管セット本数",
