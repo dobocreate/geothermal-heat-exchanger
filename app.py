@@ -400,124 +400,124 @@ if page == "単一配管計算":
 
     # 計算結果のタイトル
     st.header("📈 計算結果")
+    
+    # 配管仕様データ（JIS規格に基づく内径mm）
+    pipe_specs = {
+        "15A": 16.1,
+        "20A": 22.2,
+        "25A": 28.0,
+        "32A": 33.5,  # summary.mdに合わせて修正
+        "40A": 41.2,
+        "50A": 52.6,
+        "65A": 67.8,
+        "80A": 80.1
+    }
+    
+    # 管径別の推奨本数（50L/minの総流量を分配）
+    pipe_counts = {
+        "15A": 1,   # 50 L/min × 1本
+        "20A": 1,   # 50 L/min × 1本
+        "25A": 1,   # 50 L/min × 1本
+        "32A": 4,   # 12.5 L/min × 4本
+        "40A": 2,   # 25 L/min × 2本
+        "50A": 1,   # 50 L/min × 1本
+        "65A": 1,   # 50 L/min × 1本
+        "80A": 1    # 50 L/min × 1本
+    }
+    
+    # 材質による熱伝導率 (W/m・K)
+    thermal_conductivity = {
+        "鋼管": 50.0,
+        "アルミ管": 237.0,
+        "銅管": 398.0
+    }
+    
+    # 初期計算用の地下水温度
+    effective_ground_temp = ground_temp
+    
+    # 平均温度の計算（物性値計算用）
+    avg_temp = (initial_temp + effective_ground_temp) / 2
+    
+    # 配管内径と断面積の計算
+    inner_diameter = pipe_specs[pipe_diameter] / 1000  # m
+    pipe_area = math.pi * (inner_diameter / 2) ** 2  # m²
+    
+    # 1本あたりの流量を計算
+    num_pipes = num_pipes_user  # ユーザー設定値を使用
+    flow_per_pipe = flow_rate / num_pipes  # L/min/本
+    
+    # 流速の計算 (m/s)
+    flow_rate_m3s_per_pipe = flow_per_pipe / 60000  # L/min → m³/s
+    velocity = flow_rate_m3s_per_pipe / pipe_area
+    
+    # 温度依存の物性値計算（平均温度基準）
+    # 動粘度の計算 [m²/s]
+    if avg_temp <= 20:
+        kinematic_viscosity = 1.004e-6
+        water_thermal_conductivity = 0.598
+        prandtl = 7.01
+        density = 998.2
+        specific_heat = 4182
+    elif avg_temp <= 25:
+        # 線形補間
+        t_ratio = (avg_temp - 20) / 5
+        kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
+        water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
+        prandtl = 7.01 - (7.01 - 6.13) * t_ratio
+        density = 998.2 - (998.2 - 997.0) * t_ratio
+        specific_heat = 4182 - (4182 - 4179) * t_ratio
+    else:
+        kinematic_viscosity = 0.801e-6
+        water_thermal_conductivity = 0.615
+        prandtl = 5.42
+        density = 995.6
+        specific_heat = 4178
         
-        # 配管仕様データ（JIS規格に基づく内径mm）
-        pipe_specs = {
-            "15A": 16.1,
-            "20A": 22.2,
-            "25A": 28.0,
-            "32A": 33.5,  # summary.mdに合わせて修正
-            "40A": 41.2,
-            "50A": 52.6,
-            "65A": 67.8,
-            "80A": 80.1
-        }
+    reynolds = velocity * inner_diameter / kinematic_viscosity
+    
+    # ヌセルト数の計算（層流/乱流判定）
+    if reynolds < 2300:  # 層流
+        nusselt = 3.66
+    else:  # 乱流（Dittus-Boelter式、冷却時）
+        nusselt = 0.023 * (reynolds ** 0.8) * (prandtl ** 0.3)
+    
+    # 熱伝達係数の計算 (W/m²・K)
+    heat_transfer_coefficient = nusselt * water_thermal_conductivity / inner_diameter
         
-        # 管径別の推奨本数（50L/minの総流量を分配）
-        pipe_counts = {
-            "15A": 1,   # 50 L/min × 1本
-            "20A": 1,   # 50 L/min × 1本
-            "25A": 1,   # 50 L/min × 1本
-            "32A": 4,   # 12.5 L/min × 4本
-            "40A": 2,   # 25 L/min × 2本
-            "50A": 1,   # 50 L/min × 1本
-            "65A": 1,   # 50 L/min × 1本
-            "80A": 1    # 50 L/min × 1本
-        }
-        
-        # 材質による熱伝導率 (W/m・K)
-        thermal_conductivity = {
-            "鋼管": 50.0,
-            "アルミ管": 237.0,
-            "銅管": 398.0
-        }
-        
-        # 初期計算用の地下水温度
-        effective_ground_temp = ground_temp
-        
-        # 平均温度の計算（物性値計算用）
-        avg_temp = (initial_temp + effective_ground_temp) / 2
-        
-        # 配管内径と断面積の計算
-        inner_diameter = pipe_specs[pipe_diameter] / 1000  # m
-        pipe_area = math.pi * (inner_diameter / 2) ** 2  # m²
-        
-        # 1本あたりの流量を計算
-        num_pipes = num_pipes_user  # ユーザー設定値を使用
-        flow_per_pipe = flow_rate / num_pipes  # L/min/本
-        
-        # 流速の計算 (m/s)
-        flow_rate_m3s_per_pipe = flow_per_pipe / 60000  # L/min → m³/s
-        velocity = flow_rate_m3s_per_pipe / pipe_area
-        
-        # 温度依存の物性値計算（平均温度基準）
-        # 動粘度の計算 [m²/s]
-        if avg_temp <= 20:
-            kinematic_viscosity = 1.004e-6
-            water_thermal_conductivity = 0.598
-            prandtl = 7.01
-            density = 998.2
-            specific_heat = 4182
-        elif avg_temp <= 25:
-            # 線形補間
-            t_ratio = (avg_temp - 20) / 5
-            kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
-            water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
-            prandtl = 7.01 - (7.01 - 6.13) * t_ratio
-            density = 998.2 - (998.2 - 997.0) * t_ratio
-            specific_heat = 4182 - (4182 - 4179) * t_ratio
-        else:
-            kinematic_viscosity = 0.801e-6
-            water_thermal_conductivity = 0.615
-            prandtl = 5.42
-            density = 995.6
-            specific_heat = 4178
-        
-        reynolds = velocity * inner_diameter / kinematic_viscosity
-        
-        # ヌセルト数の計算（層流/乱流判定）
-        if reynolds < 2300:  # 層流
-            nusselt = 3.66
-        else:  # 乱流（Dittus-Boelter式、冷却時）
-            nusselt = 0.023 * (reynolds ** 0.8) * (prandtl ** 0.3)
-        
-        # 熱伝達係数の計算 (W/m²・K)
-        heat_transfer_coefficient = nusselt * water_thermal_conductivity / inner_diameter
-        
-        # 配管の熱抵抗を考慮した総括熱伝達係数
-        # 外径データ（JIS規格）
-        pipe_outer_diameters = {
-            "15A": 21.7 / 1000,  # m
-            "20A": 27.2 / 1000,
-            "25A": 34.0 / 1000,
-            "32A": 42.7 / 1000,
-            "40A": 48.6 / 1000,
-            "50A": 60.5 / 1000,
-            "65A": 76.3 / 1000,
-            "80A": 89.1 / 1000
-        }
-        
-        outer_diameter = pipe_outer_diameters[pipe_diameter]
-        pipe_thermal_cond = thermal_conductivity[pipe_material]
-        
-        # 管外側熱伝達係数（静止水中の自然対流）
-        h_outer = 300  # W/m²·K
-        
-        # 総括熱伝達係数 U (W/m²・K)
-        # 内径基準での計算
-        U = 1 / (1/heat_transfer_coefficient + 
-                inner_diameter/(2*pipe_thermal_cond) * math.log(outer_diameter/inner_diameter) + 
-                inner_diameter/(outer_diameter*h_outer))
-        
-        # 配管面積と掘削径の検証
-        total_pipe_area = num_pipes * math.pi * (outer_diameter / 2) ** 2 * 1000000  # mm²
-        boring_area = math.pi * (boring_diameter_mm / 2) ** 2  # mm²
-        
-        if total_pipe_area > boring_area * 0.8:  # 80%を超えたら警告
-            st.error(f"⚠️ 配管総面積が掘削径の80%を超えています！")
-            st.warning(f"配管総面積: {total_pipe_area:.0f}mm²")
-            st.warning(f"掘削断面積: {boring_area:.0f}mm²")
-            st.warning(f"占有率: {total_pipe_area/boring_area*100:.1f}%")
+    # 配管の熱抵抗を考慮した総括熱伝達係数
+    # 外径データ（JIS規格）
+    pipe_outer_diameters = {
+        "15A": 21.7 / 1000,  # m
+        "20A": 27.2 / 1000,
+        "25A": 34.0 / 1000,
+        "32A": 42.7 / 1000,
+        "40A": 48.6 / 1000,
+        "50A": 60.5 / 1000,
+        "65A": 76.3 / 1000,
+        "80A": 89.1 / 1000
+    }
+    
+    outer_diameter = pipe_outer_diameters[pipe_diameter]
+    pipe_thermal_cond = thermal_conductivity[pipe_material]
+    
+    # 管外側熱伝達係数（静止水中の自然対流）
+    h_outer = 300  # W/m²·K
+    
+    # 総括熱伝達係数 U (W/m²・K)
+    # 内径基準での計算
+    U = 1 / (1/heat_transfer_coefficient + 
+            inner_diameter/(2*pipe_thermal_cond) * math.log(outer_diameter/inner_diameter) + 
+            inner_diameter/(outer_diameter*h_outer))
+    
+    # 配管面積と掘削径の検証
+    total_pipe_area = num_pipes * math.pi * (outer_diameter / 2) ** 2 * 1000000  # mm²
+    boring_area = math.pi * (boring_diameter_mm / 2) ** 2  # mm²
+    
+    if total_pipe_area > boring_area * 0.8:  # 80%を超えたら警告
+        st.error(f"⚠️ 配管総面積が掘削径の80%を超えています！")
+        st.warning(f"配管総面積: {total_pipe_area:.0f}mm²")
+        st.warning(f"掘削断面積: {boring_area:.0f}mm²")
+        st.warning(f"占有率: {total_pipe_area/boring_area*100:.1f}%")
         
         # 熱交換面積（U字管として往復を考慮）
         total_length = pipe_length * 2  # 往復分
@@ -905,13 +905,13 @@ elif page == "複数配管比較":
     """)
     
     # 複数配管比較ページ
-        
-        # 各管径のセット本数を設定
-        st.subheader("配管セット本数の設定")
-        col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
-        
-        with col1:
-            n_15A = st.number_input("15A", min_value=1, max_value=10, value=1, key="n_15A")
+
+    # 各管径のセット本数を設定
+    st.subheader("配管セット本数の設定")
+    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
+    
+    with col1:
+        n_15A = st.number_input("15A", min_value=1, max_value=10, value=1, key="n_15A")
         with col2:
             n_20A = st.number_input("20A", min_value=1, max_value=10, value=1, key="n_20A")
         with col3:
