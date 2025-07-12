@@ -401,6 +401,20 @@ if page == "単一配管計算":
     # 計算結果のタイトル
     st.header("📈 計算結果")
     
+    # デバッグ情報の表示
+    with st.expander("デバッグ情報（開発用）"):
+        st.write("セッション状態の確認:")
+        st.write(f"- target_value: {st.session_state.get('target_value', 'Not found')}")
+        st.write(f"- initial_value: {st.session_state.get('initial_value', 'Not found')}")
+        st.write(f"- flow_value: {st.session_state.get('flow_value', 'Not found')}")
+        st.write(f"- ground_value: {st.session_state.get('ground_value', 'Not found')}")
+        st.write(f"- length_value: {st.session_state.get('length_value', 'Not found')}")
+        st.write(f"- boring_diameter: {st.session_state.get('boring_diameter', 'Not found')}")
+        st.write(f"- pipe_material: {st.session_state.get('pipe_material', 'Not found')}")
+        st.write(f"- pipe_diameter: {st.session_state.get('pipe_diameter', 'Not found')}")
+        st.write(f"- num_pipes_user: {st.session_state.get('num_pipes_user', 'Not found')}")
+        st.write(f"- consider_groundwater_temp_rise: {st.session_state.get('consider_groundwater_temp_rise', 'Not found')}")
+    
     # 入力セクションで定義された変数を取得
     # セッション状態から値を取得
     target_temp = st.session_state.get("target_value", 25.0)
@@ -479,15 +493,36 @@ if page == "単一配管計算":
         "80A": 89.1    # mm
     }
     
+    # デバッグ: 計算開始の確認
+    st.write("🔍 計算を開始します...")
+    
+    # 全体の計算をtry-exceptで囲む
+    try:
+    
     # 初期計算用の地下水温度
     effective_ground_temp = ground_temp
     
     # 平均温度の計算（物性値計算用）
     avg_temp = (initial_temp + effective_ground_temp) / 2
     
+    st.write(f"✅ 平均温度計算完了: {avg_temp:.1f}℃")
+    
+    # pipe_specksが存在するか確認
+    st.write(f"pipe_diameter: {pipe_diameter}")
+    st.write(f"pipe_specs keys: {list(pipe_specs.keys())}")
+    if pipe_diameter in pipe_specs:
+        st.write(f"✅ pipe_diameter '{pipe_diameter}' found in pipe_specs")
+    else:
+        st.error(f"❌ pipe_diameter '{pipe_diameter}' NOT found in pipe_specs!")
+    
     # 配管内径と断面積の計算
-    inner_diameter = pipe_specs[pipe_diameter] / 1000  # m
-    pipe_area = math.pi * (inner_diameter / 2) ** 2  # m²
+    try:
+        inner_diameter = pipe_specs[pipe_diameter] / 1000  # m
+        pipe_area = math.pi * (inner_diameter / 2) ** 2  # m²
+        st.write(f"✅ 配管内径計算完了: {inner_diameter*1000:.1f}mm")
+    except Exception as e:
+        st.error(f"❌ エラーが発生しました: {type(e).__name__}: {str(e)}")
+        st.stop()
     
     # 1本あたりの流量を計算
     num_pipes = num_pipes_user  # ユーザー設定値を使用
