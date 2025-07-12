@@ -665,24 +665,66 @@ if page == "単一配管計算":
             
         else:
             # 新しい水を連続供給する場合、または循環を考慮しない場合
-            operation_time = operation_hours * 3600  # 秒
-            if groundwater_mass > 0:
-                groundwater_temp_rise = (heat_exchange_rate * operation_time) / (groundwater_mass * specific_heat)
+            if consider_circulation and circulation_type == "新しい水を連続供給":
+                # 時系列データを生成（新しい水を連続供給）
+                time_step = 60  # 1分ごとの計算
+                num_steps = int(operation_hours * 3600 / time_step)
+                
+                current_ground_temp = ground_temp
+                
+                # 時系列データを保存するリスト
+                time_history = []
+                inlet_temp_history = []
+                outlet_temp_history = []
+                ground_temp_history = []
+                
+                for i in range(num_steps):
+                    # 現在の地下水温度での出口温度計算
+                    current_effectiveness = 1 - math.exp(-NTU)
+                    current_outlet_temp = initial_temp - current_effectiveness * (initial_temp - current_ground_temp)
+                    
+                    # 熱交換量
+                    current_heat_rate = mass_flow_rate_per_pipe * num_pipes * specific_heat * (initial_temp - current_outlet_temp)
+                    
+                    # 地下水温度上昇
+                    if groundwater_mass > 0:
+                        delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass * specific_heat)
+                        current_ground_temp += delta_ground_temp
+                        # 物理的制約：地下水温度は入口温度を超えない
+                        current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit, initial_temp)
+                    
+                    # データを記録
+                    time_history.append(i * time_step / 60)  # 分単位
+                    inlet_temp_history.append(initial_temp)  # 入口温度は一定
+                    outlet_temp_history.append(current_outlet_temp)
+                    ground_temp_history.append(current_ground_temp)
+                
+                # 最終結果
+                final_temp = outlet_temp_history[-1] if outlet_temp_history else initial_temp
+                effective_ground_temp = current_ground_temp
+                groundwater_temp_rise = current_ground_temp - ground_temp
+                groundwater_temp_rise_unlimited = groundwater_temp_rise
+                
             else:
-                st.error("⚠️ 地下水体積が負またはゼロです。配管が多すぎるか、掘削径が小さすぎます。")
-                groundwater_temp_rise = 0.0
-            
-            # 温度上昇を制限（物理的制約も考慮）
-            groundwater_temp_rise_unlimited = groundwater_temp_rise
-            # 地下水温度は入口温度を超えない
-            max_possible_rise = initial_temp - ground_temp
-            groundwater_temp_rise = min(groundwater_temp_rise, temp_rise_limit, max_possible_rise)
-            
-            # 実効地下水温度を更新
-            effective_ground_temp = ground_temp + groundwater_temp_rise
-            
-            # 最終温度を再計算
-            final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
+                # 循環を考慮しない場合（1回通水）
+                operation_time = operation_hours * 3600  # 秒
+                if groundwater_mass > 0:
+                    groundwater_temp_rise = (heat_exchange_rate * operation_time) / (groundwater_mass * specific_heat)
+                else:
+                    st.error("⚠️ 地下水体積が負またはゼロです。配管が多すぎるか、掘削径が小さすぎます。")
+                    groundwater_temp_rise = 0.0
+                
+                # 温度上昇を制限（物理的制約も考慮）
+                groundwater_temp_rise_unlimited = groundwater_temp_rise
+                # 地下水温度は入口温度を超えない
+                max_possible_rise = initial_temp - ground_temp
+                groundwater_temp_rise = min(groundwater_temp_rise, temp_rise_limit, max_possible_rise)
+                
+                # 実効地下水温度を更新
+                effective_ground_temp = ground_temp + groundwater_temp_rise
+                
+                # 最終温度を再計算
+                final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
     else:
         groundwater_temp_rise = 0.0
         # 地下水温度上昇を考慮しない場合、初回計算の値をそのまま使用
@@ -839,7 +881,7 @@ if page == "単一配管計算":
     #     st.markdown(f"- 配管セット本数: {num_pipes} セット")
     
     # 温度変化グラフ（循環を考慮する場合）
-    if consider_groundwater_temp_rise and consider_circulation and circulation_type == "同じ水を循環":
+    if consider_groundwater_temp_rise and consider_circulation:
         st.markdown("---")
         st.subheader("📊 温度変化の時系列")
         
@@ -883,8 +925,11 @@ if page == "単一配管計算":
                  annotation_text=f"初期地下水温度 {ground_temp}℃", 
                  annotation_position="left")
         
+        # グラフタイトルを運転方式に応じて変更
+        graph_title = "循環による温度変化" if circulation_type == "同じ水を循環" else "連続供給による温度変化"
+        
         fig.update_layout(
-        title="循環による温度変化",
+        title=graph_title,
         xaxis_title="経過時間（分）",
         yaxis_title="温度（℃）",
         height=400,
@@ -895,8 +940,11 @@ if page == "単一配管計算":
         st.plotly_chart(fig, use_container_width=True)
         
         # 収束状況の説明
-        convergence_temp = (inlet_temp_history[-1] + ground_temp_history[-1]) / 2
-        st.info(f"💡 {operation_minutes}分後の状態：循環水温度 {inlet_temp_history[-1]:.1f}℃、地下水温度 {ground_temp_history[-1]:.1f}℃に向かって収束中")
+        if circulation_type == "同じ水を循環":
+            convergence_temp = (inlet_temp_history[-1] + ground_temp_history[-1]) / 2
+            st.info(f"💡 {operation_minutes}分後の状態：循環水温度 {inlet_temp_history[-1]:.1f}℃、地下水温度 {ground_temp_history[-1]:.1f}℃に向かって収束中")
+        else:
+            st.info(f"💡 {operation_minutes}分後の状態：出口温度 {outlet_temp_history[-1]:.1f}℃、地下水温度 {ground_temp_history[-1]:.1f}℃")
     
     # 地下水温度上昇の詳細（チェックされている場合）
     if consider_groundwater_temp_rise:
