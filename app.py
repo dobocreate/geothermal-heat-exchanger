@@ -576,6 +576,12 @@ if page == "計算ツール":
                 current_inlet_temp = initial_temp
                 current_ground_temp = ground_temp
                 
+                # 時系列データを保存するリスト
+                time_history = []
+                inlet_temp_history = []
+                outlet_temp_history = []
+                ground_temp_history = []
+                
                 for i in range(num_steps):
                     # 現在の温度での熱交換計算
                     current_effectiveness = 1 - math.exp(-NTU)
@@ -588,7 +594,14 @@ if page == "計算ツール":
                     if groundwater_mass > 0:
                         delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass * specific_heat)
                         current_ground_temp += delta_ground_temp
-                        current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit)
+                        # 物理的制約：地下水温度は入口温度を超えない
+                        current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit, current_inlet_temp)
+                    
+                    # データを記録
+                    time_history.append(i * time_step / 60)  # 分単位
+                    inlet_temp_history.append(current_inlet_temp)
+                    outlet_temp_history.append(current_outlet_temp)
+                    ground_temp_history.append(current_ground_temp)
                     
                     # 次のステップの入口温度は現在の出口温度
                     current_inlet_temp = current_outlet_temp
@@ -608,9 +621,11 @@ if page == "計算ツール":
                     st.error("⚠️ 地下水体積が負またはゼロです。配管が多すぎるか、掘削径が小さすぎます。")
                     groundwater_temp_rise = 0.0
                 
-                # 温度上昇を制限
+                # 温度上昇を制限（物理的制約も考慮）
                 groundwater_temp_rise_unlimited = groundwater_temp_rise
-                groundwater_temp_rise = min(groundwater_temp_rise, temp_rise_limit)
+                # 地下水温度は入口温度を超えない
+                max_possible_rise = initial_temp - ground_temp
+                groundwater_temp_rise = min(groundwater_temp_rise, temp_rise_limit, max_possible_rise)
                 
                 # 実効地下水温度を更新
                 effective_ground_temp = ground_temp + groundwater_temp_rise
@@ -769,6 +784,66 @@ if page == "計算ツール":
         #     st.markdown(f"- 外径: {outer_diameter*1000:.1f} mm")
         #     st.markdown(f"- 熱伝導率: {pipe_thermal_cond} W/m·K")
         #     st.markdown(f"- 配管セット本数: {num_pipes} セット")
+        
+        # 温度変化グラフ（循環を考慮する場合）
+        if consider_groundwater_temp_rise and consider_circulation and circulation_type == "同じ水を循環" and 'time_history' in locals():
+            st.markdown("---")
+            st.subheader("📊 温度変化の時系列")
+            
+            # グラフを作成
+            fig = go.Figure()
+            
+            # 入口温度（循環水温度）
+            fig.add_trace(go.Scatter(
+                x=time_history,
+                y=inlet_temp_history,
+                mode='lines',
+                name='入口温度（循環水）',
+                line=dict(color='red', width=2)
+            ))
+            
+            # 出口温度
+            fig.add_trace(go.Scatter(
+                x=time_history,
+                y=outlet_temp_history,
+                mode='lines',
+                name='出口温度',
+                line=dict(color='blue', width=2)
+            ))
+            
+            # 地下水温度
+            fig.add_trace(go.Scatter(
+                x=time_history,
+                y=ground_temp_history,
+                mode='lines',
+                name='地下水温度',
+                line=dict(color='green', width=2, dash='dash')
+            ))
+            
+            # 目標温度線
+            fig.add_hline(y=target_temp, line_dash="dot", line_color="gray", 
+                         annotation_text=f"目標温度 {target_temp}℃", 
+                         annotation_position="right")
+            
+            # 初期地下水温度線
+            fig.add_hline(y=ground_temp, line_dash="dot", line_color="lightgreen", 
+                         annotation_text=f"初期地下水温度 {ground_temp}℃", 
+                         annotation_position="left")
+            
+            fig.update_layout(
+                title="循環による温度変化",
+                xaxis_title="経過時間（分）",
+                yaxis_title="温度（℃）",
+                height=400,
+                showlegend=True,
+                hovermode='x unified'
+            )
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # 収束状況の説明
+            convergence_temp = (inlet_temp_history[-1] + ground_temp_history[-1]) / 2
+            st.info(f"💡 {operation_minutes}分後の状態：循環水温度 {inlet_temp_history[-1]:.1f}℃、地下水温度 {ground_temp_history[-1]:.1f}℃に向かって収束中")
         
         # 地下水温度上昇の詳細（チェックされている場合）
         if consider_groundwater_temp_rise:
@@ -1010,7 +1085,8 @@ if page == "計算ツール":
                         if groundwater_mass_temp > 0:
                             delta_ground_temp = (current_heat_rate * time_step) / (groundwater_mass_temp * specific_heat)
                             current_ground_temp += delta_ground_temp
-                            current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit)
+                            # 物理的制約：地下水温度は入口温度を超えない
+                            current_ground_temp = min(current_ground_temp, ground_temp + temp_rise_limit, current_inlet_temp)
                         
                         # 次のステップの入口温度は現在の出口温度
                         current_inlet_temp = current_outlet_temp
@@ -1033,7 +1109,9 @@ if page == "計算ツール":
                     operation_time = operation_hours_temp * 3600  # 秒
                     if groundwater_mass_temp > 0:
                         gw_temp_rise = (heat_rate_temp * operation_time) / (groundwater_mass_temp * specific_heat)
-                        gw_temp_rise = min(gw_temp_rise, temp_rise_limit)
+                        # 物理的制約：地下水温度は入口温度を超えない
+                        max_possible_rise = initial_temp - ground_temp
+                        gw_temp_rise = min(gw_temp_rise, temp_rise_limit, max_possible_rise)
                     else:
                         gw_temp_rise = 0.0
                     
