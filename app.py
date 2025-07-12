@@ -1195,7 +1195,7 @@ elif page == "複数配管比較":
             # 地下水温度上昇の考慮（複数配管用）
             multi_consider_groundwater_temp_rise = st.checkbox(
                 "地下水温度上昇を考慮する",
-                value=True,
+                value=False,
                 help="ボーリング孔内の地下水温度上昇を計算に含める",
                 key="multi_consider_groundwater_temp_rise"
             )
