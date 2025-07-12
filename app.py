@@ -496,9 +496,6 @@ if page == "単一配管計算":
     # デバッグ: 計算開始の確認
     st.write("🔍 計算を開始します...")
     
-    # 全体の計算をtry-exceptで囲む
-    try:
-    
     # 初期計算用の地下水温度
     effective_ground_temp = ground_temp
     
