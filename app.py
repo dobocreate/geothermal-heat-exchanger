@@ -1203,9 +1203,9 @@ elif page == "複数配管比較":
             if multi_consider_groundwater_temp_rise:
                 # 循環/新規供給の選択
                 multi_consider_circulation = st.checkbox(
-                    "循環使用する（運転時間を設定）",
+                    "地下水の循環を考慮する",
                     value=False,
-                    help="チェックを外すと、1回の通水時間を自動計算します",
+                    help="地下水が循環せず、指定時間運転した場合の温度上昇を計算",
                     key="multi_consider_circulation"
                 )
                 
