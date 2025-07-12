@@ -493,33 +493,15 @@ if page == "単一配管計算":
         "80A": 89.1    # mm
     }
     
-    # デバッグ: 計算開始の確認
-    st.write("🔍 計算を開始します...")
-    
     # 初期計算用の地下水温度
     effective_ground_temp = ground_temp
     
     # 平均温度の計算（物性値計算用）
     avg_temp = (initial_temp + effective_ground_temp) / 2
     
-    st.write(f"✅ 平均温度計算完了: {avg_temp:.1f}℃")
-    
-    # pipe_specksが存在するか確認
-    st.write(f"pipe_diameter: {pipe_diameter}")
-    st.write(f"pipe_specs keys: {list(pipe_specs.keys())}")
-    if pipe_diameter in pipe_specs:
-        st.write(f"✅ pipe_diameter '{pipe_diameter}' found in pipe_specs")
-    else:
-        st.error(f"❌ pipe_diameter '{pipe_diameter}' NOT found in pipe_specs!")
-    
     # 配管内径と断面積の計算
-    try:
-        inner_diameter = pipe_specs[pipe_diameter] / 1000  # m
-        pipe_area = math.pi * (inner_diameter / 2) ** 2  # m²
-        st.write(f"✅ 配管内径計算完了: {inner_diameter*1000:.1f}mm")
-    except Exception as e:
-        st.error(f"❌ エラーが発生しました: {type(e).__name__}: {str(e)}")
-        st.stop()
+    inner_diameter = pipe_specs[pipe_diameter] / 1000  # m
+    pipe_area = math.pi * (inner_diameter / 2) ** 2  # m²
     
     # 1本あたりの流量を計算
     num_pipes = num_pipes_user  # ユーザー設定値を使用

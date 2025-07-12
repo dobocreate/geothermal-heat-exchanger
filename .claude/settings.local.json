@@ -22,7 +22,16 @@
       "Bash(rg:*)",
       "Bash(pkill:*)",
       "Bash(git pull:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "Bash(awk:*)",
+      "Bash(cat:*)",
+      "Bash(deactivate)",
+      "Bash(true)",
+      "Bash(rm:*)",
+      "Bash(cp:*)",
+      "Bash(test:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": []
   }
