@@ -585,6 +585,18 @@ if page == "単一配管計算":
     # 最終温度の計算（初回）
     final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
     
+    # 変数の初期化（後で使用する可能性があるもの）
+    time_history = []
+    inlet_temp_history = []
+    outlet_temp_history = []
+    ground_temp_history = []
+    boring_volume = 0
+    pipe_total_volume = 0
+    groundwater_volume = 0
+    groundwater_mass = 0
+    heat_exchange_rate = 0
+    groundwater_temp_rise_unlimited = 0
+    
     # 地下水温度上昇の計算
     if consider_groundwater_temp_rise:
         # 初期熱交換量の計算 [W]
@@ -827,7 +839,7 @@ if page == "単一配管計算":
     #     st.markdown(f"- 配管セット本数: {num_pipes} セット")
     
     # 温度変化グラフ（循環を考慮する場合）
-    if consider_groundwater_temp_rise and consider_circulation and circulation_type == "同じ水を循環" and 'time_history' in locals():
+    if consider_groundwater_temp_rise and consider_circulation and circulation_type == "同じ水を循環":
         st.markdown("---")
         st.subheader("📊 温度変化の時系列")
         
@@ -838,46 +850,46 @@ if page == "単一配管計算":
         fig.add_trace(go.Scatter(
             x=time_history,
             y=inlet_temp_history,
-            mode='lines',
-            name='入口温度（循環水）',
-            line=dict(color='red', width=2)
+        mode='lines',
+        name='入口温度（循環水）',
+        line=dict(color='red', width=2)
         ))
         
         # 出口温度
         fig.add_trace(go.Scatter(
-            x=time_history,
-            y=outlet_temp_history,
-            mode='lines',
-            name='出口温度',
-            line=dict(color='blue', width=2)
+        x=time_history,
+        y=outlet_temp_history,
+        mode='lines',
+        name='出口温度',
+        line=dict(color='blue', width=2)
         ))
         
         # 地下水温度
         fig.add_trace(go.Scatter(
-            x=time_history,
-            y=ground_temp_history,
-            mode='lines',
-            name='地下水温度',
-            line=dict(color='green', width=2, dash='dash')
+        x=time_history,
+        y=ground_temp_history,
+        mode='lines',
+        name='地下水温度',
+        line=dict(color='green', width=2, dash='dash')
         ))
         
         # 目標温度線
         fig.add_hline(y=target_temp, line_dash="dot", line_color="gray", 
-                     annotation_text=f"目標温度 {target_temp}℃", 
-                     annotation_position="right")
+                 annotation_text=f"目標温度 {target_temp}℃", 
+                 annotation_position="right")
         
         # 初期地下水温度線
         fig.add_hline(y=ground_temp, line_dash="dot", line_color="lightgreen", 
-                     annotation_text=f"初期地下水温度 {ground_temp}℃", 
-                     annotation_position="left")
+                 annotation_text=f"初期地下水温度 {ground_temp}℃", 
+                 annotation_position="left")
         
         fig.update_layout(
-            title="循環による温度変化",
-            xaxis_title="経過時間（分）",
-            yaxis_title="温度（℃）",
-            height=400,
-            showlegend=True,
-            hovermode='x unified'
+        title="循環による温度変化",
+        xaxis_title="経過時間（分）",
+        yaxis_title="温度（℃）",
+        height=400,
+        showlegend=True,
+        hovermode='x unified'
         )
         
         st.plotly_chart(fig, use_container_width=True)
@@ -898,15 +910,15 @@ if page == "単一配管計算":
         with gw_col3:
             st.metric("地下水質量", f"{groundwater_mass:.0f} kg")
         with gw_col4:
-                if consider_circulation:
-                    time_label = f"{operation_minutes}分運転"
-                else:
-                    time_label = f"1回通水（{operation_hours*60:.1f}分）"
-                    
-                if groundwater_temp_rise_unlimited > temp_rise_limit:
-                    st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃", f"制限前: {groundwater_temp_rise_unlimited:.2f}℃")
-                else:
-                    st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃")
+            if consider_circulation:
+                time_label = f"{operation_minutes}分運転"
+            else:
+                time_label = f"1回通水（{operation_hours*60:.1f}分）"
+                
+            if groundwater_temp_rise_unlimited > temp_rise_limit:
+                st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃", f"制限前: {groundwater_temp_rise_unlimited:.2f}℃")
+            else:
+                st.metric(f"{time_label}での温度上昇", f"{groundwater_temp_rise:.2f}℃")
         
         # 追加の計算結果表示
         st.markdown("---")
