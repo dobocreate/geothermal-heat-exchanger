@@ -1180,16 +1180,16 @@ elif page == "複数配管比較":
             col1, col2 = st.columns(2)
             with col1:
                 for size in pipe_sizes[:4]:
-                    if st.checkbox(size, value=(size == "32A"), key=f"multi_check_{size}"):
+                    if st.checkbox(size, value=(size in ["25A", "32A"]), key=f"multi_check_{size}"):
                         compare_pipes.append(size)
             with col2:
                 for size in pipe_sizes[4:]:
-                    if st.checkbox(size, value=False, key=f"multi_check_{size}"):
+                    if st.checkbox(size, value=(size in ["40A", "50A", "65A", "80A"]), key=f"multi_check_{size}"):
                         compare_pipes.append(size)
             
             if not compare_pipes:
                 st.warning("少なくとも1つの配管を選択してください")
-                compare_pipes = ["32A"]  # デフォルト値
+                compare_pipes = ["25A", "32A", "40A", "50A", "65A", "80A"]  # デフォルト値
         
         with row2_col2_multi:
             st.subheader("詳細設定")
