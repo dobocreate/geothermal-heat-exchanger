@@ -64,6 +64,7 @@ with button_col2:
                  key="btn_multiple"):
         st.session_state.page = "複数配管比較"
         st.rerun()
+    st.write("")  # スペース行
 
 # 境界線（計算ページと解説ページの区切り）
 st.sidebar.markdown("---")
