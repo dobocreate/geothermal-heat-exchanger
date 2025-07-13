@@ -65,7 +65,7 @@ with button_col2:
         st.session_state.page = "複数配管比較"
         st.rerun()
 
-# 境界線
+# 境界線（計算ページと解説ページの区切り）
 st.sidebar.markdown("---")
 
 with button_col3:
