@@ -65,6 +65,9 @@ with button_col2:
         st.session_state.page = "複数配管比較"
         st.rerun()
 
+# 境界線
+st.sidebar.markdown("---")
+
 with button_col3:
     if st.button("📚 理論解説", use_container_width=True,
                  type="primary" if st.session_state.page == "理論解説" else "secondary",
@@ -2668,7 +2671,7 @@ elif page == "物性値":
     
     st.header("3. 管外側熱伝達係数")
     st.markdown("""
-    **正しい理解：配管の外表面から地下水への熱の伝わりやすさ**を表す値です。
+    配管の外表面から地下水への熱の伝わりやすさを表す値です。
     
     ```
     水（管内）→ [管壁] → 地下水
