@@ -9,6 +9,76 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import math
 
+# =============================================================================
+# 物性値テーブル（水、標準大気圧、15-40度）
+# =============================================================================
+WATER_PROPERTIES = {
+    # 温度: (動粘度 m²/s, 熱伝導率 W/m·K, プラントル数, 密度 kg/m³, 比熱 J/kg·K)
+    15: (1.139e-6, 0.589, 8.09, 999.1, 4186),
+    20: (1.004e-6, 0.598, 7.01, 998.2, 4182),
+    25: (0.893e-6, 0.607, 6.13, 997.0, 4179),
+    30: (0.801e-6, 0.615, 5.42, 995.6, 4178),
+    35: (0.726e-6, 0.623, 4.83, 994.0, 4178),
+    40: (0.658e-6, 0.631, 4.32, 992.2, 4179),
+}
+
+def get_water_properties(temp):
+    """
+    指定温度における水の物性値を返す（バルク温度法：入口温度基準）
+
+    Parameters:
+        temp: 温度（度C）
+
+    Returns:
+        dict: kinematic_viscosity, thermal_conductivity, prandtl, density, specific_heat
+    """
+    # 温度範囲の境界処理
+    if temp <= 15:
+        props = WATER_PROPERTIES[15]
+        return {
+            'kinematic_viscosity': props[0],
+            'thermal_conductivity': props[1],
+            'prandtl': props[2],
+            'density': props[3],
+            'specific_heat': props[4]
+        }
+    elif temp >= 40:
+        props = WATER_PROPERTIES[40]
+        return {
+            'kinematic_viscosity': props[0],
+            'thermal_conductivity': props[1],
+            'prandtl': props[2],
+            'density': props[3],
+            'specific_heat': props[4]
+        }
+
+    # 線形補間のための温度区間を特定
+    temps = sorted(WATER_PROPERTIES.keys())
+    for i in range(len(temps) - 1):
+        t_low, t_high = temps[i], temps[i + 1]
+        if t_low < temp <= t_high:
+            t_ratio = (temp - t_low) / (t_high - t_low)
+            props_low = WATER_PROPERTIES[t_low]
+            props_high = WATER_PROPERTIES[t_high]
+
+            return {
+                'kinematic_viscosity': props_low[0] + (props_high[0] - props_low[0]) * t_ratio,
+                'thermal_conductivity': props_low[1] + (props_high[1] - props_low[1]) * t_ratio,
+                'prandtl': props_low[2] + (props_high[2] - props_low[2]) * t_ratio,
+                'density': props_low[3] + (props_high[3] - props_low[3]) * t_ratio,
+                'specific_heat': props_low[4] + (props_high[4] - props_low[4]) * t_ratio
+            }
+
+    # フォールバック（通常は到達しない）
+    props = WATER_PROPERTIES[20]
+    return {
+        'kinematic_viscosity': props[0],
+        'thermal_conductivity': props[1],
+        'prandtl': props[2],
+        'density': props[3],
+        'specific_heat': props[4]
+    }
+
 # ページ設定
 st.set_page_config(
     page_title="地中熱交換簡易シミュレーター",
@@ -455,56 +525,12 @@ if page == "単一配管計算":
     velocity = flow_rate_m3s_per_pipe / pipe_area
 
     # 温度依存の物性値計算（バルク温度法：入口温度基準）
-    # 水の物性値データ（標準大気圧、15-40度をカバー）
-    if avg_temp <= 15:
-        # 15度以下は15度の値を使用
-        kinematic_viscosity = 1.139e-6
-        water_thermal_conductivity = 0.589
-        prandtl = 8.09
-        density = 999.1
-        specific_heat = 4186
-    elif avg_temp <= 20:
-        t_ratio = (avg_temp - 15) / 5
-        kinematic_viscosity = 1.139e-6 - (1.139e-6 - 1.004e-6) * t_ratio
-        water_thermal_conductivity = 0.589 + (0.598 - 0.589) * t_ratio
-        prandtl = 8.09 - (8.09 - 7.01) * t_ratio
-        density = 999.1 - (999.1 - 998.2) * t_ratio
-        specific_heat = 4186 - (4186 - 4182) * t_ratio
-    elif avg_temp <= 25:
-        t_ratio = (avg_temp - 20) / 5
-        kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
-        water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
-        prandtl = 7.01 - (7.01 - 6.13) * t_ratio
-        density = 998.2 - (998.2 - 997.0) * t_ratio
-        specific_heat = 4182 - (4182 - 4179) * t_ratio
-    elif avg_temp <= 30:
-        t_ratio = (avg_temp - 25) / 5
-        kinematic_viscosity = 0.893e-6 - (0.893e-6 - 0.801e-6) * t_ratio
-        water_thermal_conductivity = 0.607 + (0.615 - 0.607) * t_ratio
-        prandtl = 6.13 - (6.13 - 5.42) * t_ratio
-        density = 997.0 - (997.0 - 995.6) * t_ratio
-        specific_heat = 4179 - (4179 - 4178) * t_ratio
-    elif avg_temp <= 35:
-        t_ratio = (avg_temp - 30) / 5
-        kinematic_viscosity = 0.801e-6 - (0.801e-6 - 0.726e-6) * t_ratio
-        water_thermal_conductivity = 0.615 + (0.623 - 0.615) * t_ratio
-        prandtl = 5.42 - (5.42 - 4.83) * t_ratio
-        density = 995.6 - (995.6 - 994.0) * t_ratio
-        specific_heat = 4178  # 30-35度でほぼ一定
-    elif avg_temp <= 40:
-        t_ratio = (avg_temp - 35) / 5
-        kinematic_viscosity = 0.726e-6 - (0.726e-6 - 0.658e-6) * t_ratio
-        water_thermal_conductivity = 0.623 + (0.631 - 0.623) * t_ratio
-        prandtl = 4.83 - (4.83 - 4.32) * t_ratio
-        density = 994.0 - (994.0 - 992.2) * t_ratio
-        specific_heat = 4178 + (4179 - 4178) * t_ratio
-    else:
-        # 40度超は40度の値を使用
-        kinematic_viscosity = 0.658e-6
-        water_thermal_conductivity = 0.631
-        prandtl = 4.32
-        density = 992.2
-        specific_heat = 4179
+    water_props = get_water_properties(avg_temp)
+    kinematic_viscosity = water_props['kinematic_viscosity']
+    water_thermal_conductivity = water_props['thermal_conductivity']
+    prandtl = water_props['prandtl']
+    density = water_props['density']
+    specific_heat = water_props['specific_heat']
 
     reynolds = velocity * inner_diameter / kinematic_viscosity
     
@@ -1301,56 +1327,12 @@ elif page == "複数配管比較":
     avg_temp = multi_initial_temp
 
     # 温度依存の物性値計算（バルク温度法：入口温度基準）
-    # 水の物性値データ（標準大気圧、15-40度をカバー）
-    if avg_temp <= 15:
-        # 15度以下は15度の値を使用
-        kinematic_viscosity = 1.139e-6
-        water_thermal_conductivity = 0.589
-        prandtl = 8.09
-        density = 999.1
-        specific_heat = 4186
-    elif avg_temp <= 20:
-        t_ratio = (avg_temp - 15) / 5
-        kinematic_viscosity = 1.139e-6 - (1.139e-6 - 1.004e-6) * t_ratio
-        water_thermal_conductivity = 0.589 + (0.598 - 0.589) * t_ratio
-        prandtl = 8.09 - (8.09 - 7.01) * t_ratio
-        density = 999.1 - (999.1 - 998.2) * t_ratio
-        specific_heat = 4186 - (4186 - 4182) * t_ratio
-    elif avg_temp <= 25:
-        t_ratio = (avg_temp - 20) / 5
-        kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
-        water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
-        prandtl = 7.01 - (7.01 - 6.13) * t_ratio
-        density = 998.2 - (998.2 - 997.0) * t_ratio
-        specific_heat = 4182 - (4182 - 4179) * t_ratio
-    elif avg_temp <= 30:
-        t_ratio = (avg_temp - 25) / 5
-        kinematic_viscosity = 0.893e-6 - (0.893e-6 - 0.801e-6) * t_ratio
-        water_thermal_conductivity = 0.607 + (0.615 - 0.607) * t_ratio
-        prandtl = 6.13 - (6.13 - 5.42) * t_ratio
-        density = 997.0 - (997.0 - 995.6) * t_ratio
-        specific_heat = 4179 - (4179 - 4178) * t_ratio
-    elif avg_temp <= 35:
-        t_ratio = (avg_temp - 30) / 5
-        kinematic_viscosity = 0.801e-6 - (0.801e-6 - 0.726e-6) * t_ratio
-        water_thermal_conductivity = 0.615 + (0.623 - 0.615) * t_ratio
-        prandtl = 5.42 - (5.42 - 4.83) * t_ratio
-        density = 995.6 - (995.6 - 994.0) * t_ratio
-        specific_heat = 4178  # 30-35度でほぼ一定
-    elif avg_temp <= 40:
-        t_ratio = (avg_temp - 35) / 5
-        kinematic_viscosity = 0.726e-6 - (0.726e-6 - 0.658e-6) * t_ratio
-        water_thermal_conductivity = 0.623 + (0.631 - 0.623) * t_ratio
-        prandtl = 4.83 - (4.83 - 4.32) * t_ratio
-        density = 994.0 - (994.0 - 992.2) * t_ratio
-        specific_heat = 4178 + (4179 - 4178) * t_ratio
-    else:
-        # 40度超は40度の値を使用
-        kinematic_viscosity = 0.658e-6
-        water_thermal_conductivity = 0.631
-        prandtl = 4.32
-        density = 992.2
-        specific_heat = 4179
+    water_props = get_water_properties(avg_temp)
+    kinematic_viscosity = water_props['kinematic_viscosity']
+    water_thermal_conductivity = water_props['thermal_conductivity']
+    prandtl = water_props['prandtl']
+    density = water_props['density']
+    specific_heat = water_props['specific_heat']
 
     pipe_thermal_cond = thermal_conductivity[multi_pipe_material]
     # h_outer は詳細設定でユーザー入力済み（multi_h_outer）
