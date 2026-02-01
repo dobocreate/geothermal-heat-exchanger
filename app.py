@@ -122,120 +122,68 @@ if page == "単一配管計算":
             st.subheader("基本条件")
             
             # 目標出口温度
-            target_col1, target_col2 = st.columns([3, 1])
+            if "target_temp" not in st.session_state:
+                st.session_state.target_temp = 23.0
             
-            # セッション状態の初期化
-            if "target_value" not in st.session_state:
-                st.session_state.target_value = 23.0
-            
-            with target_col1:
-                target_temp_slider = st.slider("目標出口温度 (℃)", 20.0, 30.0, st.session_state.target_value, 1.0, 
-                                              help="最終温度との比較に使用する。計算には使用しない",
-                                              key="target_slider")
-            with target_col2:
-                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                target_temp_input = st.number_input("", min_value=20.0, max_value=30.0, value=st.session_state.target_value, step=1.0, 
-                                                   key="target_input", label_visibility="collapsed")
-            
-            # 同期処理：どちらかが変更されたら共通の値を更新
-            if target_temp_slider != st.session_state.target_value:
-                st.session_state.target_value = target_temp_slider
-                st.rerun()
-            elif target_temp_input != st.session_state.target_value:
-                st.session_state.target_value = target_temp_input
-                st.rerun()
-            
-            target_temp = st.session_state.target_value
+            target_temp = st.number_input(
+                "目標出口温度 (℃)",
+                min_value=20.0,
+                max_value=30.0,
+                step=1.0,
+                key="target_temp",
+                help="最終温度との比較に使用する。計算には使用しない"
+            )
             
             # 入口温度
-            initial_col1, initial_col2 = st.columns([3, 1])
+            if "initial_temp" not in st.session_state:
+                st.session_state.initial_temp = 30.0
             
-            if "initial_value" not in st.session_state:
-                st.session_state.initial_value = 30.0
-            
-            with initial_col1:
-                initial_temp_slider = st.slider("入口温度 (℃)", 20.0, 40.0, st.session_state.initial_value, 1.0, key="initial_slider")
-            with initial_col2:
-                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                initial_temp_input = st.number_input("", min_value=20.0, max_value=40.0, value=st.session_state.initial_value, step=1.0, 
-                                                    key="initial_input", label_visibility="collapsed")
-            
-            if initial_temp_slider != st.session_state.initial_value:
-                st.session_state.initial_value = initial_temp_slider
-                st.rerun()
-            elif initial_temp_input != st.session_state.initial_value:
-                st.session_state.initial_value = initial_temp_input
-                st.rerun()
-            
-            initial_temp = st.session_state.initial_value
+            initial_temp = st.number_input(
+                "入口温度 (℃)",
+                min_value=20.0,
+                max_value=40.0,
+                step=1.0,
+                key="initial_temp"
+            )
             
             # 総流量
-            flow_col1, flow_col2 = st.columns([3, 1])
+            if "flow_rate" not in st.session_state:
+                st.session_state.flow_rate = 50.0
             
-            if "flow_value" not in st.session_state:
-                st.session_state.flow_value = 50.0
-            
-            with flow_col1:
-                flow_rate_slider = st.slider("総流量 (L/min)", 20.0, 100.0, st.session_state.flow_value, 1.0, key="flow_slider")
-            with flow_col2:
-                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                flow_rate_input = st.number_input("", min_value=20.0, max_value=100.0, value=st.session_state.flow_value, step=1.0, 
-                                                 key="flow_input", label_visibility="collapsed")
-            
-            if flow_rate_slider != st.session_state.flow_value:
-                st.session_state.flow_value = flow_rate_slider
-                st.rerun()
-            elif flow_rate_input != st.session_state.flow_value:
-                st.session_state.flow_value = flow_rate_input
-                st.rerun()
-            
-            flow_rate = st.session_state.flow_value
+            flow_rate = st.number_input(
+                "総流量 (L/min)",
+                min_value=20.0,
+                max_value=100.0,
+                step=1.0,
+                key="flow_rate"
+            )
     
         with row1_col2:
             st.subheader("地盤条件")
+            
             # 地下水温度
-            ground_col1, ground_col2 = st.columns([3, 1])
+            if "ground_temp" not in st.session_state:
+                st.session_state.ground_temp = 15.0
             
-            if "ground_value" not in st.session_state:
-                st.session_state.ground_value = 15.0
-            
-            with ground_col1:
-                ground_temp_slider = st.slider("地下水温度 (℃)", 0.0, 20.0, st.session_state.ground_value, 1.0, key="ground_slider")
-            with ground_col2:
-                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                ground_temp_input = st.number_input("", min_value=0.0, max_value=20.0, value=st.session_state.ground_value, step=1.0, 
-                                                   key="ground_input", label_visibility="collapsed")
-            
-            if ground_temp_slider != st.session_state.ground_value:
-                st.session_state.ground_value = ground_temp_slider
-                st.rerun()
-            elif ground_temp_input != st.session_state.ground_value:
-                st.session_state.ground_value = ground_temp_input
-                st.rerun()
-            
-            ground_temp = st.session_state.ground_value
+            ground_temp = st.number_input(
+                "地下水温度 (℃)",
+                min_value=0.0,
+                max_value=20.0,
+                step=1.0,
+                key="ground_temp"
+            )
             
             # 管浸水距離
-            length_col1, length_col2 = st.columns([3, 1])
+            if "pipe_length" not in st.session_state:
+                st.session_state.pipe_length = 5.0
             
-            if "length_value" not in st.session_state:
-                st.session_state.length_value = 5.0
-            
-            with length_col1:
-                pipe_length_slider = st.slider("管浸水距離 (m)", 1.0, 30.0, st.session_state.length_value, 0.5, key="length_slider")
-            with length_col2:
-                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                pipe_length_input = st.number_input("", min_value=1.0, max_value=30.0, value=st.session_state.length_value, step=0.5, 
-                                                   key="length_input", label_visibility="collapsed")
-            
-            if pipe_length_slider != st.session_state.length_value:
-                st.session_state.length_value = pipe_length_slider
-                st.rerun()
-            elif pipe_length_input != st.session_state.length_value:
-                st.session_state.length_value = pipe_length_input
-                st.rerun()
-            
-            pipe_length = st.session_state.length_value
+            pipe_length = st.number_input(
+                "管浸水距離 (m)",
+                min_value=1.0,
+                max_value=30.0,
+                step=0.5,
+                key="pipe_length"
+            )
             
             # 掘削径の選択
             if "boring_diameter" not in st.session_state:
@@ -354,71 +302,69 @@ if page == "単一配管計算":
                     )
                     
                     # 運転時間
-                    op_col1, op_col2 = st.columns([3, 1])
+                    if "operation_minutes" not in st.session_state:
+                        st.session_state.operation_minutes = 10
                     
-                    if "operation_value" not in st.session_state:
-                        st.session_state.operation_value = 10
-                    
-                    with op_col1:
-                        operation_minutes_slider = st.slider("運転時間 (分)", 1, 60, st.session_state.operation_value, 1, key="operation_slider")
-                    with op_col2:
-                        st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                        operation_minutes_input = st.number_input("", min_value=1, max_value=60, value=st.session_state.operation_value, step=1, 
-                                                                 key="operation_input", label_visibility="collapsed")
-                    
-                    if operation_minutes_slider != st.session_state.operation_value:
-                        st.session_state.operation_value = operation_minutes_slider
-                        st.rerun()
-                    elif operation_minutes_input != st.session_state.operation_value:
-                        st.session_state.operation_value = operation_minutes_input
-                        st.rerun()
-                    
-                    operation_minutes = st.session_state.operation_value
+                    operation_minutes = st.number_input(
+                        "運転時間 (分)",
+                        min_value=1,
+                        max_value=60,
+                        step=1,
+                        key="operation_minutes"
+                    )
                     operation_hours = operation_minutes / 60  # 時間に変換
                 else:
                     # 1回の通水時間を計算（デフォルト）
                     operation_hours = 1  # 暫定値、後で計算される
                     
                 # 温度上昇上限値
-                limit_col1, limit_col2 = st.columns([3, 1])
+                if "temp_rise_limit" not in st.session_state:
+                    st.session_state.temp_rise_limit = 5
                 
-                if "limit_value" not in st.session_state:
-                    st.session_state.limit_value = 5
-                
-                with limit_col1:
-                    temp_rise_limit_slider = st.slider("温度上昇上限値 (℃)", 5, 20, st.session_state.limit_value, 1, 
-                                                      help="地下水温度上昇の最大制限値", key="limit_slider")
-                with limit_col2:
-                    st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                    temp_rise_limit_input = st.number_input("", min_value=5, max_value=20, value=st.session_state.limit_value, step=1, 
-                                                           key="limit_input", label_visibility="collapsed")
-                
-                if temp_rise_limit_slider != st.session_state.limit_value:
-                    st.session_state.limit_value = temp_rise_limit_slider
-                    st.rerun()
-                elif temp_rise_limit_input != st.session_state.limit_value:
-                    st.session_state.limit_value = temp_rise_limit_input
-                    st.rerun()
-                
-                temp_rise_limit = st.session_state.limit_value
+                temp_rise_limit = st.number_input(
+                    "温度上昇上限値 (℃)",
+                    min_value=5,
+                    max_value=20,
+                    step=1,
+                    key="temp_rise_limit",
+                    help="地下水温度上昇の最大制限値"
+                )
             else:
                 operation_hours = 1  # デフォルト値（後で再計算される）
                 temp_rise_limit = 5  # デフォルト値
                 consider_circulation = False
                 circulation_type = None
+        
+        # 計算開始ボタン（配管条件と詳細設定の列を横断）
+        st.markdown("")  # スペース
+        calc_button_col1, calc_button_col2, calc_button_col3 = st.columns([1, 2, 1])
+        with calc_button_col2:
+            calculate_clicked = st.button("🔄 計算開始", type="primary", use_container_width=True, key="calc_single")
     
     st.markdown("---")  # 計算条件と結果を区切る
-
-    # 計算結果のタイトル
+    
+    # 計算実行フラグをセッション状態で管理
+    if "single_calculated" not in st.session_state:
+        st.session_state.single_calculated = False
+    
+    if calculate_clicked:
+        st.session_state.single_calculated = True
+    
+    # 計算結果のタイトル（常に表示）
     st.header("📈 計算結果")
+    
+    # 計算が実行されていない場合はメッセージを表示して終了
+    if not st.session_state.single_calculated:
+        st.info("⬆️ 計算条件を設定して「計算開始」ボタンを押してください。")
+        st.stop()  # これ以降の処理をスキップ
     
     # 入力セクションで定義された変数を取得
     # セッション状態から値を取得
-    target_temp = st.session_state.get("target_value", 25.0)
-    initial_temp = st.session_state.get("initial_value", 30.0)
-    flow_rate = st.session_state.get("flow_value", 50.0)
-    ground_temp = st.session_state.get("ground_value", 15.0)
-    pipe_length = st.session_state.get("length_value", 5.0)
+    target_temp = st.session_state.get("target_temp", 23.0)
+    initial_temp = st.session_state.get("initial_temp", 30.0)
+    flow_rate = st.session_state.get("flow_rate", 50.0)
+    ground_temp = st.session_state.get("ground_temp", 15.0)
+    pipe_length = st.session_state.get("pipe_length", 5.0)
     boring_diameter = st.session_state.get("boring_diameter", "φ250")
     boring_diameter_mm = 116 if boring_diameter == "φ116" else 250
     pipe_material = st.session_state.get("pipe_material", "鋼管")
@@ -432,7 +378,7 @@ if page == "単一配管計算":
         consider_circulation = st.session_state.get("consider_circulation", False)
         if consider_circulation:
             circulation_type = st.session_state.get("circulation_type", "同じ水を循環")
-            operation_minutes = st.session_state.get("operation_value", 10)
+            operation_minutes = st.session_state.get("operation_minutes", 10)
             if circulation_type == "同じ水を循環":
                 operation_hours = operation_minutes / 60  # 分を時間に変換
             else:
@@ -440,7 +386,7 @@ if page == "単一配管計算":
         else:
             operation_hours = 1  # デフォルト値（後で再計算される）
             circulation_type = None
-        temp_rise_limit = st.session_state.get("limit_value", 5.0)
+        temp_rise_limit = st.session_state.get("temp_rise_limit", 5)
     else:
         operation_hours = 1  # デフォルト値
         temp_rise_limit = 5  # デフォルト値
@@ -1051,120 +997,68 @@ elif page == "複数配管比較":
             st.subheader("基本条件")
             
             # 目標出口温度（複数配管用）
-            target_col1_multi, target_col2_multi = st.columns([3, 1])
+            if "multi_target_temp" not in st.session_state:
+                st.session_state.multi_target_temp = 23.0
             
-            # セッション状態の初期化（複数配管用）
-            if "multi_target_value" not in st.session_state:
-                st.session_state.multi_target_value = 23.0
-            
-            with target_col1_multi:
-                multi_target_temp_slider = st.slider("目標出口温度 (℃)", 20.0, 30.0, st.session_state.multi_target_value, 1.0, 
-                                              help="最終温度との比較に使用する。計算には使用しない",
-                                              key="multi_target_slider")
-            with target_col2_multi:
-                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                multi_target_temp_input = st.number_input("", min_value=20.0, max_value=30.0, value=st.session_state.multi_target_value, step=1.0, 
-                                                   key="multi_target_input", label_visibility="collapsed")
-            
-            # 同期処理
-            if multi_target_temp_slider != st.session_state.multi_target_value:
-                st.session_state.multi_target_value = multi_target_temp_slider
-                st.rerun()
-            elif multi_target_temp_input != st.session_state.multi_target_value:
-                st.session_state.multi_target_value = multi_target_temp_input
-                st.rerun()
-            
-            multi_target_temp = st.session_state.multi_target_value
+            multi_target_temp = st.number_input(
+                "目標出口温度 (℃)",
+                min_value=20.0,
+                max_value=30.0,
+                step=1.0,
+                key="multi_target_temp",
+                help="最終温度との比較に使用する。計算には使用しない"
+            )
             
             # 入口温度（複数配管用）
-            initial_col1_multi, initial_col2_multi = st.columns([3, 1])
+            if "multi_initial_temp" not in st.session_state:
+                st.session_state.multi_initial_temp = 30.0
             
-            if "multi_initial_value" not in st.session_state:
-                st.session_state.multi_initial_value = 30.0
-            
-            with initial_col1_multi:
-                multi_initial_temp_slider = st.slider("入口温度 (℃)", 20.0, 40.0, st.session_state.multi_initial_value, 1.0, key="multi_initial_slider")
-            with initial_col2_multi:
-                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                multi_initial_temp_input = st.number_input("", min_value=20.0, max_value=40.0, value=st.session_state.multi_initial_value, step=1.0, 
-                                                    key="multi_initial_input", label_visibility="collapsed")
-            
-            if multi_initial_temp_slider != st.session_state.multi_initial_value:
-                st.session_state.multi_initial_value = multi_initial_temp_slider
-                st.rerun()
-            elif multi_initial_temp_input != st.session_state.multi_initial_value:
-                st.session_state.multi_initial_value = multi_initial_temp_input
-                st.rerun()
-            
-            multi_initial_temp = st.session_state.multi_initial_value
+            multi_initial_temp = st.number_input(
+                "入口温度 (℃)",
+                min_value=20.0,
+                max_value=40.0,
+                step=1.0,
+                key="multi_initial_temp"
+            )
             
             # 総流量（複数配管用）
-            flow_col1_multi, flow_col2_multi = st.columns([3, 1])
+            if "multi_flow_rate" not in st.session_state:
+                st.session_state.multi_flow_rate = 50.0
             
-            if "multi_flow_value" not in st.session_state:
-                st.session_state.multi_flow_value = 50.0
-            
-            with flow_col1_multi:
-                multi_flow_rate_slider = st.slider("総流量 (L/min)", 20.0, 100.0, st.session_state.multi_flow_value, 1.0, key="multi_flow_slider")
-            with flow_col2_multi:
-                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                multi_flow_rate_input = st.number_input("", min_value=20.0, max_value=100.0, value=st.session_state.multi_flow_value, step=1.0, 
-                                                 key="multi_flow_input", label_visibility="collapsed")
-            
-            if multi_flow_rate_slider != st.session_state.multi_flow_value:
-                st.session_state.multi_flow_value = multi_flow_rate_slider
-                st.rerun()
-            elif multi_flow_rate_input != st.session_state.multi_flow_value:
-                st.session_state.multi_flow_value = multi_flow_rate_input
-                st.rerun()
-            
-            multi_flow_rate = st.session_state.multi_flow_value
+            multi_flow_rate = st.number_input(
+                "総流量 (L/min)",
+                min_value=20.0,
+                max_value=100.0,
+                step=1.0,
+                key="multi_flow_rate"
+            )
     
         with row1_col2_multi:
             st.subheader("地盤条件")
+            
             # 地下水温度（複数配管用）
-            ground_col1_multi, ground_col2_multi = st.columns([3, 1])
+            if "multi_ground_temp" not in st.session_state:
+                st.session_state.multi_ground_temp = 15.0
             
-            if "multi_ground_value" not in st.session_state:
-                st.session_state.multi_ground_value = 15.0
-            
-            with ground_col1_multi:
-                multi_ground_temp_slider = st.slider("地下水温度 (℃)", 0.0, 20.0, st.session_state.multi_ground_value, 1.0, key="multi_ground_slider")
-            with ground_col2_multi:
-                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                multi_ground_temp_input = st.number_input("", min_value=0.0, max_value=20.0, value=st.session_state.multi_ground_value, step=1.0, 
-                                                   key="multi_ground_input", label_visibility="collapsed")
-            
-            if multi_ground_temp_slider != st.session_state.multi_ground_value:
-                st.session_state.multi_ground_value = multi_ground_temp_slider
-                st.rerun()
-            elif multi_ground_temp_input != st.session_state.multi_ground_value:
-                st.session_state.multi_ground_value = multi_ground_temp_input
-                st.rerun()
-            
-            multi_ground_temp = st.session_state.multi_ground_value
+            multi_ground_temp = st.number_input(
+                "地下水温度 (℃)",
+                min_value=0.0,
+                max_value=20.0,
+                step=1.0,
+                key="multi_ground_temp"
+            )
             
             # 管浸水距離（複数配管用）
-            length_col1_multi, length_col2_multi = st.columns([3, 1])
+            if "multi_pipe_length" not in st.session_state:
+                st.session_state.multi_pipe_length = 5.0
             
-            if "multi_length_value" not in st.session_state:
-                st.session_state.multi_length_value = 5.0
-            
-            with length_col1_multi:
-                multi_pipe_length_slider = st.slider("管浸水距離 (m)", 1.0, 30.0, st.session_state.multi_length_value, 0.5, key="multi_length_slider")
-            with length_col2_multi:
-                st.markdown("<div style='margin-top: 30px;'></div>", unsafe_allow_html=True)
-                multi_pipe_length_input = st.number_input("", min_value=1.0, max_value=30.0, value=st.session_state.multi_length_value, step=0.5, 
-                                                   key="multi_length_input", label_visibility="collapsed")
-            
-            if multi_pipe_length_slider != st.session_state.multi_length_value:
-                st.session_state.multi_length_value = multi_pipe_length_slider
-                st.rerun()
-            elif multi_pipe_length_input != st.session_state.multi_length_value:
-                st.session_state.multi_length_value = multi_pipe_length_input
-                st.rerun()
-            
-            multi_pipe_length = st.session_state.multi_length_value
+            multi_pipe_length = st.number_input(
+                "管浸水距離 (m)",
+                min_value=1.0,
+                max_value=30.0,
+                step=0.5,
+                key="multi_pipe_length"
+            )
             
             # 掘削径の選択（複数配管用）
             if "multi_boring_diameter" not in st.session_state:
@@ -1254,13 +1148,16 @@ elif page == "複数配管比較":
                     )
                     
                     # 運転時間の設定
-                    multi_operation_minutes = st.slider(
+                    if "multi_operation_minutes" not in st.session_state:
+                        st.session_state.multi_operation_minutes = 10
+                    
+                    multi_operation_minutes = st.number_input(
                         "運転時間 (分)",
                         min_value=1,
                         max_value=60,
-                        value=10,
-                        help="地下水温度が上昇する運転時間",
-                        key="multi_operation_minutes"
+                        step=1,
+                        key="multi_operation_minutes",
+                        help="地下水温度が上昇する運転時間"
                     )
                     multi_operation_hours = multi_operation_minutes / 60
                 else:
@@ -1268,14 +1165,16 @@ elif page == "複数配管比較":
                     multi_operation_hours = None  # 後で計算
                 
                 # 許容温度上昇の設定
-                multi_temp_rise_limit = st.slider(
+                if "multi_temp_rise_limit" not in st.session_state:
+                    st.session_state.multi_temp_rise_limit = 10.0
+                
+                multi_temp_rise_limit = st.number_input(
                     "許容地下水温度上昇 (℃)",
                     min_value=5.0,
                     max_value=20.0,
-                    value=10.0,
                     step=0.5,
-                    help="地下水温度の最大上昇幅を制限",
-                    key="multi_temp_rise_limit"
+                    key="multi_temp_rise_limit",
+                    help="地下水温度の最大上昇幅を制限"
                 )
             else:
                 multi_consider_circulation = False
@@ -1310,21 +1209,40 @@ elif page == "複数配管比較":
         for size in pipe_sizes:
             if size not in pipe_counts_user:
                 pipe_counts_user[size] = 1
-        
-    # 計算実行
-    st.markdown("---")
+    
+    # 計算開始ボタン（配管条件と詳細設定の列を横断）
+    st.markdown("")  # スペース
+    calc_button_col1_m, calc_button_col2_m, calc_button_col3_m = st.columns([1, 2, 1])
+    with calc_button_col2_m:
+        calculate_clicked_multi = st.button("🔄 計算開始", type="primary", use_container_width=True, key="calc_multi")
+    
+    st.markdown("---")  # 計算条件と結果を区切る
+    
+    # 計算実行フラグをセッション状態で管理
+    if "multi_calculated" not in st.session_state:
+        st.session_state.multi_calculated = False
+    
+    if calculate_clicked_multi:
+        st.session_state.multi_calculated = True
+    
+    # 計算結果のタイトル（常に表示）
     st.header("📈 計算結果")
     
-    # 配管仕様
+    # 計算が実行されていない場合はメッセージを表示して終了
+    if not st.session_state.multi_calculated:
+        st.info("⬆️ 計算条件を設定して「計算開始」ボタンを押してください。")
+        st.stop()  # これ以降の処理をスキップ
+    
+    # 配管仕様（JIS G 3452規格に基づく内径）
     pipe_specs = {
         "15A": 16.1,   # mm
-        "20A": 21.6,   # mm
-        "25A": 27.6,   # mm
-        "32A": 35.7,   # mm
-        "40A": 41.6,   # mm
-        "50A": 52.9,   # mm
-        "65A": 67.9,   # mm
-        "80A": 80.7    # mm
+        "20A": 22.2,   # mm
+        "25A": 28.0,   # mm
+        "32A": 33.5,   # mm
+        "40A": 41.2,   # mm
+        "50A": 52.6,   # mm
+        "65A": 67.8,   # mm
+        "80A": 80.1    # mm
     }
     
     # 材質による熱伝導率 (W/m・K)
