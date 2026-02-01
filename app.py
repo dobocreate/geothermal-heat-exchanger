@@ -453,14 +453,23 @@ if page == "単一配管計算":
     # 流速の計算 (m/s)
     flow_rate_m3s_per_pipe = flow_per_pipe / 60000  # L/min → m³/s
     velocity = flow_rate_m3s_per_pipe / pipe_area
-    
+
     # 温度依存の物性値計算（バルク温度法：入口温度基準）
-    if avg_temp <= 20:
-        kinematic_viscosity = 1.004e-6
-        water_thermal_conductivity = 0.598
-        prandtl = 7.01
-        density = 998.2
-        specific_heat = 4182
+    # 水の物性値データ（標準大気圧、15-40度をカバー）
+    if avg_temp <= 15:
+        # 15度以下は15度の値を使用
+        kinematic_viscosity = 1.139e-6
+        water_thermal_conductivity = 0.589
+        prandtl = 8.09
+        density = 999.1
+        specific_heat = 4186
+    elif avg_temp <= 20:
+        t_ratio = (avg_temp - 15) / 5
+        kinematic_viscosity = 1.139e-6 - (1.139e-6 - 1.004e-6) * t_ratio
+        water_thermal_conductivity = 0.589 + (0.598 - 0.589) * t_ratio
+        prandtl = 8.09 - (8.09 - 7.01) * t_ratio
+        density = 999.1 - (999.1 - 998.2) * t_ratio
+        specific_heat = 4186 - (4186 - 4182) * t_ratio
     elif avg_temp <= 25:
         t_ratio = (avg_temp - 20) / 5
         kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
@@ -475,13 +484,28 @@ if page == "単一配管計算":
         prandtl = 6.13 - (6.13 - 5.42) * t_ratio
         density = 997.0 - (997.0 - 995.6) * t_ratio
         specific_heat = 4179 - (4179 - 4178) * t_ratio
+    elif avg_temp <= 35:
+        t_ratio = (avg_temp - 30) / 5
+        kinematic_viscosity = 0.801e-6 - (0.801e-6 - 0.726e-6) * t_ratio
+        water_thermal_conductivity = 0.615 + (0.623 - 0.615) * t_ratio
+        prandtl = 5.42 - (5.42 - 4.83) * t_ratio
+        density = 995.6 - (995.6 - 994.0) * t_ratio
+        specific_heat = 4178  # 30-35度でほぼ一定
+    elif avg_temp <= 40:
+        t_ratio = (avg_temp - 35) / 5
+        kinematic_viscosity = 0.726e-6 - (0.726e-6 - 0.658e-6) * t_ratio
+        water_thermal_conductivity = 0.623 + (0.631 - 0.623) * t_ratio
+        prandtl = 4.83 - (4.83 - 4.32) * t_ratio
+        density = 994.0 - (994.0 - 992.2) * t_ratio
+        specific_heat = 4178 + (4179 - 4178) * t_ratio
     else:
-        kinematic_viscosity = 0.801e-6
-        water_thermal_conductivity = 0.615
-        prandtl = 5.42
-        density = 995.6
-        specific_heat = 4178
-    
+        # 40度超は40度の値を使用
+        kinematic_viscosity = 0.658e-6
+        water_thermal_conductivity = 0.631
+        prandtl = 4.32
+        density = 992.2
+        specific_heat = 4179
+
     reynolds = velocity * inner_diameter / kinematic_viscosity
     
     # ヌセルト数の計算（層流/乱流判定）
@@ -1277,12 +1301,21 @@ elif page == "複数配管比較":
     avg_temp = multi_initial_temp
 
     # 温度依存の物性値計算（バルク温度法：入口温度基準）
-    if avg_temp <= 20:
-        kinematic_viscosity = 1.004e-6
-        water_thermal_conductivity = 0.598
-        prandtl = 7.01
-        density = 998.2
-        specific_heat = 4182
+    # 水の物性値データ（標準大気圧、15-40度をカバー）
+    if avg_temp <= 15:
+        # 15度以下は15度の値を使用
+        kinematic_viscosity = 1.139e-6
+        water_thermal_conductivity = 0.589
+        prandtl = 8.09
+        density = 999.1
+        specific_heat = 4186
+    elif avg_temp <= 20:
+        t_ratio = (avg_temp - 15) / 5
+        kinematic_viscosity = 1.139e-6 - (1.139e-6 - 1.004e-6) * t_ratio
+        water_thermal_conductivity = 0.589 + (0.598 - 0.589) * t_ratio
+        prandtl = 8.09 - (8.09 - 7.01) * t_ratio
+        density = 999.1 - (999.1 - 998.2) * t_ratio
+        specific_heat = 4186 - (4186 - 4182) * t_ratio
     elif avg_temp <= 25:
         t_ratio = (avg_temp - 20) / 5
         kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
@@ -1297,12 +1330,27 @@ elif page == "複数配管比較":
         prandtl = 6.13 - (6.13 - 5.42) * t_ratio
         density = 997.0 - (997.0 - 995.6) * t_ratio
         specific_heat = 4179 - (4179 - 4178) * t_ratio
+    elif avg_temp <= 35:
+        t_ratio = (avg_temp - 30) / 5
+        kinematic_viscosity = 0.801e-6 - (0.801e-6 - 0.726e-6) * t_ratio
+        water_thermal_conductivity = 0.615 + (0.623 - 0.615) * t_ratio
+        prandtl = 5.42 - (5.42 - 4.83) * t_ratio
+        density = 995.6 - (995.6 - 994.0) * t_ratio
+        specific_heat = 4178  # 30-35度でほぼ一定
+    elif avg_temp <= 40:
+        t_ratio = (avg_temp - 35) / 5
+        kinematic_viscosity = 0.726e-6 - (0.726e-6 - 0.658e-6) * t_ratio
+        water_thermal_conductivity = 0.623 + (0.631 - 0.623) * t_ratio
+        prandtl = 4.83 - (4.83 - 4.32) * t_ratio
+        density = 994.0 - (994.0 - 992.2) * t_ratio
+        specific_heat = 4178 + (4179 - 4178) * t_ratio
     else:
-        kinematic_viscosity = 0.801e-6
-        water_thermal_conductivity = 0.615
-        prandtl = 5.42
-        density = 995.6
-        specific_heat = 4178
+        # 40度超は40度の値を使用
+        kinematic_viscosity = 0.658e-6
+        water_thermal_conductivity = 0.631
+        prandtl = 4.32
+        density = 992.2
+        specific_heat = 4179
 
     pipe_thermal_cond = thermal_conductivity[multi_pipe_material]
     # h_outer は詳細設定でユーザー入力済み（multi_h_outer）
