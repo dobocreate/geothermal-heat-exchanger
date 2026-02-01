@@ -439,9 +439,6 @@ if page == "単一配管計算":
     # 初期計算用の地下水温度
     effective_ground_temp = ground_temp
     
-    # 平均温度の計算（物性値計算用）
-    avg_temp = (initial_temp + effective_ground_temp) / 2
-    
     # 配管内径と断面積の計算
     inner_diameter = pipe_specs[pipe_diameter] / 1000  # m
     pipe_area = math.pi * (inner_diameter / 2) ** 2  # m²
@@ -454,41 +451,6 @@ if page == "単一配管計算":
     flow_rate_m3s_per_pipe = flow_per_pipe / 60000  # L/min → m³/s
     velocity = flow_rate_m3s_per_pipe / pipe_area
     
-    # 温度依存の物性値計算（平均温度基準）
-    # 動粘度の計算 [m²/s]
-    if avg_temp <= 20:
-        kinematic_viscosity = 1.004e-6
-        water_thermal_conductivity = 0.598
-        prandtl = 7.01
-        density = 998.2
-        specific_heat = 4182
-    elif avg_temp <= 25:
-        # 線形補間
-        t_ratio = (avg_temp - 20) / 5
-        kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
-        water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
-        prandtl = 7.01 - (7.01 - 6.13) * t_ratio
-        density = 998.2 - (998.2 - 997.0) * t_ratio
-        specific_heat = 4182 - (4182 - 4179) * t_ratio
-    else:
-        kinematic_viscosity = 0.801e-6
-        water_thermal_conductivity = 0.615
-        prandtl = 5.42
-        density = 995.6
-        specific_heat = 4178
-        
-    reynolds = velocity * inner_diameter / kinematic_viscosity
-    
-    # ヌセルト数の計算（層流/乱流判定）
-    if reynolds < 2300:  # 層流
-        nusselt = 3.66
-    else:  # 乱流（Dittus-Boelter式、冷却時）
-        nusselt = 0.023 * (reynolds ** 0.8) * (prandtl ** 0.3)
-    
-    # 熱伝達係数の計算 (W/m²・K)
-    heat_transfer_coefficient = nusselt * water_thermal_conductivity / inner_diameter
-        
-    # 配管の熱抵抗を考慮した総括熱伝達係数
     # 外径データ（JIS規格）
     pipe_outer_diameters = {
         "15A": 21.7 / 1000,  # m
@@ -504,14 +466,9 @@ if page == "単一配管計算":
     outer_diameter = pipe_outer_diameters[pipe_diameter]
     pipe_thermal_cond = thermal_conductivity[pipe_material]
     
-    # 管外側熱伝達係数（ユーザー入力値を使用）
-    # h_outer は詳細設定で入力済み
-    
-    # 総括熱伝達係数 U (W/m²・K)
-    # 内径基準での計算
-    U = 1 / (1/heat_transfer_coefficient + 
-            inner_diameter/(2*pipe_thermal_cond) * math.log(outer_diameter/inner_diameter) + 
-            inner_diameter/(outer_diameter*h_outer))
+    # 熱交換面積（U字管として往復を考慮）
+    total_length = pipe_length * 2  # 往復分
+    heat_exchange_area = math.pi * inner_diameter * total_length
     
     # 配管面積と掘削径の検証
     total_pipe_area = num_pipes * math.pi * (outer_diameter / 2) ** 2 * 1000000  # mm²
@@ -523,24 +480,116 @@ if page == "単一配管計算":
         st.warning(f"掘削断面積: {boring_area:.0f}mm²")
         st.warning(f"占有率: {total_pipe_area/boring_area*100:.1f}%")
     
-    # 熱交換面積（U字管として往復を考慮）
-    total_length = pipe_length * 2  # 往復分
-    heat_exchange_area = math.pi * inner_diameter * total_length
+    # 物性値計算関数（バルク温度法）
+    def get_water_properties(temp):
+        """温度に基づいて水の物性値を返す"""
+        if temp <= 20:
+            return {
+                'kinematic_viscosity': 1.004e-6,
+                'thermal_conductivity': 0.598,
+                'prandtl': 7.01,
+                'density': 998.2,
+                'specific_heat': 4182
+            }
+        elif temp <= 25:
+            t_ratio = (temp - 20) / 5
+            return {
+                'kinematic_viscosity': 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio,
+                'thermal_conductivity': 0.598 + (0.607 - 0.598) * t_ratio,
+                'prandtl': 7.01 - (7.01 - 6.13) * t_ratio,
+                'density': 998.2 - (998.2 - 997.0) * t_ratio,
+                'specific_heat': 4182 - (4182 - 4179) * t_ratio
+            }
+        elif temp <= 30:
+            t_ratio = (temp - 25) / 5
+            return {
+                'kinematic_viscosity': 0.893e-6 - (0.893e-6 - 0.801e-6) * t_ratio,
+                'thermal_conductivity': 0.607 + (0.615 - 0.607) * t_ratio,
+                'prandtl': 6.13 - (6.13 - 5.42) * t_ratio,
+                'density': 997.0 - (997.0 - 995.6) * t_ratio,
+                'specific_heat': 4179 - (4179 - 4178) * t_ratio
+            }
+        else:
+            return {
+                'kinematic_viscosity': 0.801e-6,
+                'thermal_conductivity': 0.615,
+                'prandtl': 5.42,
+                'density': 995.6,
+                'specific_heat': 4178
+            }
     
-    # 質量流量（1本あたり）
-    mass_flow_rate_per_pipe = flow_rate_m3s_per_pipe * density  # kg/s
+    def calculate_heat_transfer(bulk_temp):
+        """バルク温度に基づいて熱伝達計算を行う"""
+        props = get_water_properties(bulk_temp)
+        
+        # レイノルズ数
+        re = velocity * inner_diameter / props['kinematic_viscosity']
+        
+        # ヌセルト数（層流/乱流判定）
+        if re < 2300:  # 層流
+            nu = 3.66
+        else:  # 乱流（Dittus-Boelter式、冷却時）
+            nu = 0.023 * (re ** 0.8) * (props['prandtl'] ** 0.3)
+        
+        # 熱伝達係数
+        h_inner = nu * props['thermal_conductivity'] / inner_diameter
+        
+        # 総括熱伝達係数 U（内径基準）
+        u = 1 / (1/h_inner + 
+                inner_diameter/(2*pipe_thermal_cond) * math.log(outer_diameter/inner_diameter) + 
+                inner_diameter/(outer_diameter*h_outer))
+        
+        # 質量流量
+        mass_flow = flow_rate_m3s_per_pipe * props['density']
+        
+        # NTU
+        ntu = u * heat_exchange_area / (mass_flow * props['specific_heat'])
+        
+        # 効率
+        eff = 1 - math.exp(-ntu)
+        
+        return {
+            'reynolds': re,
+            'nusselt': nu,
+            'h_inner': h_inner,
+            'U': u,
+            'mass_flow': mass_flow,
+            'NTU': ntu,
+            'effectiveness': eff,
+            'props': props
+        }
     
-    # NTU（伝熱単位数）の計算（1本あたり）
-    NTU_per_pipe = U * heat_exchange_area / (mass_flow_rate_per_pipe * specific_heat)
+    # バルク温度法による反復計算
+    # Step 1: 入口温度で初期計算
+    initial_result = calculate_heat_transfer(initial_temp)
+    estimated_outlet = initial_temp - initial_result['effectiveness'] * (initial_temp - effective_ground_temp)
     
-    # 全体のNTU（並列配管の場合、1本あたりのNTUと同じ）
+    # Step 2: バルク温度（入口・出口平均）で再計算
+    bulk_temp = (initial_temp + estimated_outlet) / 2
+    final_result = calculate_heat_transfer(bulk_temp)
+    
+    # 最終的な物性値と計算結果を取得
+    props = final_result['props']
+    kinematic_viscosity = props['kinematic_viscosity']
+    water_thermal_conductivity = props['thermal_conductivity']
+    prandtl = props['prandtl']
+    density = props['density']
+    specific_heat = props['specific_heat']
+    
+    reynolds = final_result['reynolds']
+    nusselt = final_result['nusselt']
+    heat_transfer_coefficient = final_result['h_inner']
+    U = final_result['U']
+    mass_flow_rate_per_pipe = final_result['mass_flow']
+    NTU_per_pipe = final_result['NTU']
     NTU = NTU_per_pipe
+    effectiveness = final_result['effectiveness']
     
-    # 効率の計算（対向流型熱交換器として近似）
-    effectiveness = 1 - math.exp(-NTU)
-    
-    # 最終温度の計算（初回）
+    # 最終温度の計算
     final_temp = initial_temp - effectiveness * (initial_temp - effective_ground_temp)
+    
+    # バルク温度を表示用に保存
+    avg_temp = bulk_temp
     
     # 変数の初期化（後で使用する可能性があるもの）
     time_history = []
@@ -1275,29 +1324,43 @@ elif page == "複数配管比較":
     else:
         boring_diameter_mm = 250  # デフォルト
     
-    # 平均温度の計算（物性値計算用）
-    avg_temp = (multi_initial_temp + effective_ground_temp) / 2
-    
-    # 温度依存の物性値計算
-    if avg_temp <= 20:
-        kinematic_viscosity = 1.004e-6
-        water_thermal_conductivity = 0.598
-        prandtl = 7.01
-        density = 998.2
-        specific_heat = 4182
-    elif avg_temp <= 25:
-        t_ratio = (avg_temp - 20) / 5
-        kinematic_viscosity = 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio
-        water_thermal_conductivity = 0.598 + (0.607 - 0.598) * t_ratio
-        prandtl = 7.01 - (7.01 - 6.13) * t_ratio
-        density = 998.2 - (998.2 - 997.0) * t_ratio
-        specific_heat = 4182 - (4182 - 4179) * t_ratio
-    else:
-        kinematic_viscosity = 0.801e-6
-        water_thermal_conductivity = 0.615
-        prandtl = 5.42
-        density = 995.6
-        specific_heat = 4178
+    # 物性値計算関数（バルク温度法）
+    def get_water_properties_multi(temp):
+        """温度に基づいて水の物性値を返す"""
+        if temp <= 20:
+            return {
+                'kinematic_viscosity': 1.004e-6,
+                'thermal_conductivity': 0.598,
+                'prandtl': 7.01,
+                'density': 998.2,
+                'specific_heat': 4182
+            }
+        elif temp <= 25:
+            t_ratio = (temp - 20) / 5
+            return {
+                'kinematic_viscosity': 1.004e-6 - (1.004e-6 - 0.893e-6) * t_ratio,
+                'thermal_conductivity': 0.598 + (0.607 - 0.598) * t_ratio,
+                'prandtl': 7.01 - (7.01 - 6.13) * t_ratio,
+                'density': 998.2 - (998.2 - 997.0) * t_ratio,
+                'specific_heat': 4182 - (4182 - 4179) * t_ratio
+            }
+        elif temp <= 30:
+            t_ratio = (temp - 25) / 5
+            return {
+                'kinematic_viscosity': 0.893e-6 - (0.893e-6 - 0.801e-6) * t_ratio,
+                'thermal_conductivity': 0.607 + (0.615 - 0.607) * t_ratio,
+                'prandtl': 6.13 - (6.13 - 5.42) * t_ratio,
+                'density': 997.0 - (997.0 - 995.6) * t_ratio,
+                'specific_heat': 4179 - (4179 - 4178) * t_ratio
+            }
+        else:
+            return {
+                'kinematic_viscosity': 0.801e-6,
+                'thermal_conductivity': 0.615,
+                'prandtl': 5.42,
+                'density': 995.6,
+                'specific_heat': 4178
+            }
     
     pipe_thermal_cond = thermal_conductivity[multi_pipe_material]
     # h_outer は詳細設定でユーザー入力済み（multi_h_outer）
@@ -1308,53 +1371,75 @@ elif page == "複数配管比較":
     pipe_comparison = []
     warnings_list = []  # 警告メッセージ用リスト
     
+    # 外径データ（JIS規格）
+    pipe_outer_diameters_comp = {
+        "15A": 21.7 / 1000,  # m
+        "20A": 27.2 / 1000,
+        "25A": 34.0 / 1000,
+        "32A": 42.7 / 1000,
+        "40A": 48.6 / 1000,
+        "50A": 60.5 / 1000,
+        "65A": 76.3 / 1000,
+        "80A": 89.1 / 1000
+    }
+    
     # 選択された配管のみ計算
     for pipe_size in compare_pipes:
-            # 各管径での計算
+        # 各管径での計算
         inner_d = pipe_specs[pipe_size] / 1000
         area = math.pi * (inner_d / 2) ** 2
         n_pipes = pipe_counts_user[pipe_size]
         flow_per_p = multi_flow_rate / n_pipes
         flow_rate_m3s_per_p = flow_per_p / 60000
         vel = flow_rate_m3s_per_p / area
-        re = vel * inner_d / kinematic_viscosity
-            
-        if re < 2300:
-            nu = 3.66
-        else:
-            nu = 0.023 * (re ** 0.8) * (prandtl ** 0.3)
-        
-        h = nu * water_thermal_conductivity / inner_d
-        
-        # 外径データ（JIS規格）
-        pipe_outer_diameters_comp = {
-            "15A": 21.7 / 1000,  # m
-            "20A": 27.2 / 1000,
-            "25A": 34.0 / 1000,
-            "32A": 42.7 / 1000,
-            "40A": 48.6 / 1000,
-            "50A": 60.5 / 1000,
-            "65A": 76.3 / 1000,
-            "80A": 89.1 / 1000
-        }
-        
         outer_d = pipe_outer_diameters_comp[pipe_size]
+        A_temp = math.pi * inner_d * total_length
         
         # 配管面積と掘削径の検証
         total_pipe_area_temp = n_pipes * math.pi * (outer_d / 2) ** 2 * 1000000  # mm²
         if total_pipe_area_temp > boring_area * 0.8:
             warnings_list.append(f"{pipe_size}: 配管総面積が掘削径の80%を超過 ({total_pipe_area_temp/boring_area*100:.1f}%)")
         
+        # バルク温度法による反復計算
+        # Step 1: 入口温度で初期計算
+        props_init = get_water_properties_multi(multi_initial_temp)
+        re_init = vel * inner_d / props_init['kinematic_viscosity']
+        if re_init < 2300:
+            nu_init = 3.66
+        else:
+            nu_init = 0.023 * (re_init ** 0.8) * (props_init['prandtl'] ** 0.3)
+        h_init = nu_init * props_init['thermal_conductivity'] / inner_d
+        U_init = 1 / (1/h_init + inner_d/(2*pipe_thermal_cond) * math.log(outer_d/inner_d) + inner_d/(outer_d*multi_h_outer))
+        mass_flow_init = flow_rate_m3s_per_p * props_init['density']
+        NTU_init = U_init * A_temp / (mass_flow_init * props_init['specific_heat'])
+        eff_init = 1 - math.exp(-NTU_init)
+        estimated_outlet = multi_initial_temp - eff_init * (multi_initial_temp - effective_ground_temp)
+        
+        # Step 2: バルク温度（入口・出口平均）で再計算
+        bulk_temp = (multi_initial_temp + estimated_outlet) / 2
+        props = get_water_properties_multi(bulk_temp)
+        
+        re = vel * inner_d / props['kinematic_viscosity']
+        if re < 2300:
+            nu = 3.66
+        else:
+            nu = 0.023 * (re ** 0.8) * (props['prandtl'] ** 0.3)
+        
+        h = nu * props['thermal_conductivity'] / inner_d
+        
         # 総括熱伝達係数（内径基準）
         U_temp = 1 / (1/h + 
                      inner_d/(2*pipe_thermal_cond) * math.log(outer_d/inner_d) + 
                      inner_d/(outer_d*multi_h_outer))
         
-        A_temp = math.pi * inner_d * total_length
-        mass_flow_per_p = flow_rate_m3s_per_p * density
-        NTU_temp = U_temp * A_temp / (mass_flow_per_p * specific_heat)
+        mass_flow_per_p = flow_rate_m3s_per_p * props['density']
+        NTU_temp = U_temp * A_temp / (mass_flow_per_p * props['specific_heat'])
         eff_temp = 1 - math.exp(-NTU_temp)
         final_t = multi_initial_temp - eff_temp * (multi_initial_temp - effective_ground_temp)
+        
+        # 物性値を保存（後続の計算用）
+        density = props['density']
+        specific_heat = props['specific_heat']
         
         # 地下水温度上昇の計算（各配管サイズごと）
         if multi_consider_groundwater_temp_rise:
